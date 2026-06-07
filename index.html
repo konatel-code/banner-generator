@@ -1440,9 +1440,10 @@ function drawHorizontal(ctx,w,h,tour,tImg,lImg){
   ctx.textAlign='left';
   // ── Horná zóna: logo + dest + názov ──
   const topZoneBot = priceZoneTop - p;
-  // Logo
-  const logoH=Math.round(h*.18);
-  drawLogo(ctx,lImg,p,p,Math.round(h*.8),logoH);
+  // Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  const logoH=Math.round(h*.22);
+  const logoMaxW=Math.min(Math.round(logoH*4.5), Math.round(w*.45));
+  drawLogo(ctx,lImg,w-p-logoMaxW,p,logoMaxW,logoH);
   let ty=p+logoH+Math.round(p*.55);
   // Destinácia
   const destFs=Math.round(h*.11);
@@ -1478,9 +1479,10 @@ function drawLandscape(ctx,w,h,tour,tImg,lImg){
   grad(ctx,0,h*.22,w,h*.78,'b','rgba(12,20,50,0)','rgba(12,20,50,.98)');
   grad(ctx,0,0,w,h*.25,'t','rgba(0,0,0,.6)','rgba(0,0,0,0)');
   const p=Math.round(w*.033);
-  // Logo
-  const logoH=Math.round(h*.1);
-  drawLogo(ctx,lImg,p,p,Math.round(h*.5),logoH);
+  // Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  const logoH=Math.round(h*.135);
+  const logoMaxW=Math.min(Math.round(logoH*4.5),w-p*2);
+  drawLogo(ctx,lImg,w-p-logoMaxW,p,logoMaxW,logoH);
   // Všetko od dna nahor
   const bot=h-p;
   ctx.font=`${Math.round(h*.027)}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.38)';
@@ -1541,18 +1543,19 @@ function drawSquare(ctx,w,h,tour,tImg,lImg){
   ctx.fillStyle=C.primary; ctx.fillRect(0,imgH,w,h-imgH);
   ctx.fillStyle=C.green; ctx.fillRect(0,imgH,w,Math.max(3,Math.round(h*.005)));
   const p=Math.round(w*.05);
-  // Logo: vľavo hore v obrazovej časti
-  const logoH=Math.round(imgH*.18);
-  drawLogo(ctx,lImg,p,p,Math.round(logoH*4.5),logoH);
-  // Zľava badge: vpravo hore
+  // Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  const logoH=Math.round(imgH*.22);
+  const logoMaxW=Math.min(Math.round(logoH*4.5),w-p*2);
+  drawLogo(ctx,lImg,w-p-logoMaxW,p,logoMaxW,logoH);
+  // Zľava badge: vľavo hore (aby nekonflikovalo s logom)
   if(tour.maxDiscount>0){
     const dbadgeFs=Math.round(w*.058);
     ctx.font=`bold ${dbadgeFs}px Ubuntu,Arial`;
     const dt=`-${tour.maxDiscount}%`;
     const dw2=ctx.measureText(dt).width+Math.round(p*.8);
-    rr(ctx,w-p-dw2,p,dw2,Math.round(dbadgeFs*1.5),4,C.green);
+    rr(ctx,p,p,dw2,Math.round(dbadgeFs*1.5),4,C.green);
     ctx.fillStyle=C.white; ctx.textBaseline='top'; ctx.textAlign='center';
-    ctx.fillText(dt,w-p-dw2/2,p+Math.round(dbadgeFs*.2)); ctx.textAlign='left';
+    ctx.fillText(dt,p+dw2/2,p+Math.round(dbadgeFs*.2)); ctx.textAlign='left';
   }
   // ── Textový panel (od hora, fixné zóny) ──
   const panH=h-imgH;
@@ -1603,10 +1606,10 @@ function drawSkyscraper(ctx,w,h,tour,tImg,lImg){
   const minNFs = Math.max(8, Math.round(h*.020));
   const webFs  = Math.max(Math.round(w*.067), Math.round(h*.024));
 
-  // Logo
+  // Logo: vycentrované – rovnaká medzera z prava aj z ľava
   const logoW = Math.min(Math.round(logoH*4.5), w-p*2);
   const logoY = imgH+Math.round(p*.85);
-  drawLogo(ctx,lImg,p,logoY,logoW,logoH);
+  drawLogo(ctx,lImg,Math.round((w-logoW)/2),logoY,logoW,logoH);
   let ty=logoY+logoH+Math.round(p*.6);
 
   // Destinácia
@@ -1671,9 +1674,9 @@ function drawStory(ctx,w,h,tour,tImg,lImg){
   grad(ctx,0,0,w,h*.26,'t','rgba(20,32,72,.9)','rgba(0,0,0,0)');
   grad(ctx,0,h*.44,w,h*.56,'b','rgba(0,0,0,0)','rgba(15,25,55,.98)');
   const p=Math.round(w*.07);
-  // ── TOP: logo centrovaný ──
-  const logoH=Math.round(h*.055);
-  const logoW=Math.round(logoH*5);
+  // ── TOP: logo centrovaný – rovnaká medzera z prava aj z ľava ──
+  const logoH=Math.round(h*.07);
+  const logoW=Math.min(Math.round(logoH*5),w-p*2);
   drawLogo(ctx,lImg,Math.round((w-logoW)/2),Math.round(p*.9),logoW,logoH);
   // ── BOTTOM: pevné sekcie od dna ──
   const bot=h-p;
@@ -1901,8 +1904,8 @@ function drawLightPortrait(ctx, w, h, tour, tImg, lImg) {
   // 3. Biely panel s vlnkou
   drawWhitePanel(ctx, w, h, splitY, amp);
 
-  // 4. Logo: vpravo hore na fotke – šírka nesmie presiahnuť dostupný priestor
-  const logoH = Math.round(h * (h > 900 ? 0.058 : 0.095));
+  // 4. Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  const logoH = Math.round(h * (h > 900 ? 0.072 : 0.115));
   const logoW = Math.min(Math.round(logoH * 4.5), w - p * 2);
   drawLogo(ctx, lImg, w - p - logoW, p, logoW, logoH);
 
@@ -1976,10 +1979,10 @@ function drawLightLandscape(ctx, w, h, tour, tImg, lImg) {
   }
   drawWhitePanelV(ctx, w, h, splitX, amp);
 
-  // Logo: vľavo hore na fotke – max šírka = dostupná zóna na foto
-  const logoH = Math.round(h * 0.18);
+  // Logo: vpravo hore v oblasti fotky – rovnaká medzera zhora aj zprava od vlnky
+  const logoH = Math.round(h * 0.22);
   const logoMaxW = Math.min(Math.round(logoH * 4.5), splitX - p * 2);
-  drawLogo(ctx, lImg, p, p, logoMaxW, logoH);
+  drawLogo(ctx, lImg, splitX - p - logoMaxW, p, logoMaxW, logoH);
 
   // Texty vpravo – tx začína za dolinou vlnky (splitX + amp*0.3 + padding)
   const tx   = Math.round(splitX + amp*0.3 + w*0.018);
@@ -2106,8 +2109,8 @@ function drawLightStampPortrait(ctx, w, h, tour, tImg, lImg) {
   drawStampDividerV(ctx, h, 0, dotR);   // ľavý okraj
   drawStampDividerV(ctx, h, w, dotR);   // pravý okraj
 
-  // Logo: vpravo hore na foto – šírka nesmie presiahnuť dostupný priestor
-  const logoH = Math.round(h * (h > 900 ? 0.058 : 0.095));
+  // Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  const logoH = Math.round(h * (h > 900 ? 0.072 : 0.115));
   const logoW = Math.min(Math.round(logoH * 4.5), w - p * 2);
   drawLogo(ctx, lImg, w - p - logoW, p, logoW, logoH);
 
@@ -2167,10 +2170,10 @@ function drawLightStampLandscape(ctx, w, h, tour, tImg, lImg) {
   drawStampDividerV(ctx, h, 0, dotR);   // ľavý okraj
   drawStampDividerV(ctx, h, w, dotR);   // pravý okraj
 
-  // Logo na foto (ľavý horný roh) – max logoH × dostupná šírka
-  const logoH = Math.round(h * 0.18);
+  // Logo na foto: vpravo hore – rovnaká medzera zhora aj zprava od vlnky
+  const logoH = Math.round(h * 0.22);
   const maxLogoW = Math.min(Math.round(logoH * 4.5), splitX - p * 2);
-  drawLogo(ctx, lImg, p, p, maxLogoW, logoH);
+  drawLogo(ctx, lImg, splitX - p - maxLogoW, p, maxLogoW, logoH);
 
   // Text: pravý panel
   const tx = splitX + dotR + Math.round(w * 0.025);
