@@ -119,15 +119,13 @@ body{font-family:'Ubuntu','Helvetica Neue',Helvetica,Arial,sans-serif;background
 
 /* Select all formats */
 .fmeta{display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
-.fmeta button{padding:6px 14px;font-size:12px;font-weight:600;border:2px solid var(--gray);border-radius:8px;
-              background:#fff;cursor:pointer;font-family:inherit;color:var(--primary);
+.fmeta button{padding:6px 14px;font-size:12px;font-weight:600;border:2px solid #dde;border-radius:8px;
+              background:#fff;cursor:pointer;font-family:inherit;color:#666;
               transition:all .15s;display:flex;align-items:center;gap:5px;
               box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.fmeta button:hover{border-color:var(--primary);background:var(--bg);transform:translateY(-1px)}
-.fmeta button.fmeta-all{border-color:var(--green);color:var(--green)}
-.fmeta button.fmeta-all:hover{background:#f3f9e8;border-color:var(--green-dark)}
-.fmeta button.fmeta-clear{border-color:#e0e0e0;color:#888}
-.fmeta button.fmeta-clear:hover{border-color:#c0c0c0;color:#555}
+.fmeta button:hover{border-color:var(--green);color:var(--green);background:#f3f9e8;transform:translateY(-1px)}
+.fmeta button.fmeta-clear{border-color:#e0e0e0;color:#aaa}
+.fmeta button.fmeta-clear:hover{border-color:#bbb;color:#666;background:#f5f5f5}
 
 /* Clear all button */
 .btn-clear{padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;
@@ -270,8 +268,8 @@ details[open].batch-wrap summary::before{transform:rotate(90deg)}
       <div class="pnl-t">Reklamné formáty</div>
       <div class="ptabs" id="ptabs"></div>
       <div class="fmeta">
-        <button onclick="selAllFmts()">☑ Táto platforma</button>
-        <button class="fmeta-all" onclick="selAllFmtsAll()">✓ Všetky platformy</button>
+        <button onclick="selAllFmts()">Vybrať všetky (táto)</button>
+        <button onclick="selAllFmtsAll()">Vybrať všetky platformy</button>
         <button class="fmeta-clear" onclick="selNoFmtsAll()">✕ Zrušiť výber formátov</button>
       </div>
       <div class="fgrid" id="fgrid"></div>
