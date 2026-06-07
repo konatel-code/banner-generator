@@ -337,7 +337,7 @@ details[open].batch-wrap summary::before{transform:rotate(90deg)}
     </div>
     <details class="batch-wrap">
       <summary>⚡ Rýchly výber zo zoznamu</summary>
-      <textarea class="batch-ta" id="batch-ta" placeholder="Vložte názvy zájazdov, jeden na riadok (dátumy sa ignorujú)…"></textarea>
+      <textarea class="batch-ta" id="batch-ta" placeholder="Vložte názvy zájazdov, jeden na riadok.&#10;Ak obsahujú dátum (17.07.2026 - 26.07.2026), použije sa konkrétny termín a jeho cena."></textarea>
       <button class="batch-btn" onclick="batchSelect()">Vybrať zodpovedajúce zájazdy</button>
       <div id="batch-res"></div>
     </details>
@@ -510,20 +510,46 @@ function formatDate(iso) {
   return `${d}.${m}.${y}`;
 }
 
-// Dávkový výber – vloží zoznam názvov, automaticky vyberie zodpovedajúce
+// ── Override helpers – ak je zájazd vybraný s konkrétnym termínom (batch), použi ho ──
+function tourPrice(t)     { return t._overridePrice    ?? t.minPrice;  }
+function tourDateFrom(t)  { return t._overrideDateFrom ?? t.dateFrom;  }
+function tourDateTo(t)    { return t._overrideDateTo   ?? t.dateTo;    }
+function tourDays(t)      { return t._overrideDays     ?? t.days;      }
+// Formát ceny: "X,XX €" keď je konkrétny termín, "od X €" keď min cena
+function tourPriceStr(t) {
+  if (t._overridePrice != null) return `${t._overridePrice.toFixed(2).replace('.',',')} €`;
+  return t.minPrice != null ? `od ${Math.round(t.minPrice)} €` : null;
+}
+// "už za" prefix len pre override (konkrétna cena), pre minPrice "od"
+function tourPricePrefix(t) { return t._overridePrice != null ? 'už za' : 'od'; }
+
+// Dávkový výber – vloží zoznam názvov (vrátane dátumov), automaticky vyberie zodpovedajúce
+// Príklad: "Slnečné pobrežie - Hotel XY 4* s dopravou 17.07.2026 - 26.07.2026"
 function batchSelect() {
   const raw = document.getElementById('batch-ta').value;
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
   if (!lines.length) return;
-  const notFound = [];
+  const notFound = [], noTerm = [], details = [];
   let found = 0;
+
   for (const line of lines) {
-    // Odstrán dátumové reťazce (napr. "02.07.2026 - 05.07.2026" alebo "(02.07.2026 - 05.07.2026)")
+    // 1. Extrahuj dátumy z riadku (DD.MM.YYYY - DD.MM.YYYY alebo DD.MM.YYYY – DD.MM.YYYY)
+    const dateMatch = line.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[-–]\s*(\d{2})\.(\d{2})\.(\d{4})/);
+    let wantDateFrom = null, wantDateTo = null;
+    if (dateMatch) {
+      // Konvertuj na ISO (YYYY-MM-DD)
+      wantDateFrom = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+      wantDateTo   = `${dateMatch[6]}-${dateMatch[5]}-${dateMatch[4]}`;
+    }
+
+    // 2. Vyčisti názov (odstráň dátumy a závorky)
     const cleaned = stripDia(line
-      .replace(/\(?\d{2}\.\d{2}\.\d{4}\s*[-–]\s*\d{2}\.\d{2}\.\d{4}\)?/g,'')
-      .replace(/\s+/g,' ').trim());
+      .replace(/\(?\d{2}\.\d{2}\.\d{4}\s*[-–]\s*\d{2}\.\d{2}\.\d{4}\)?/g, '')
+      .replace(/\s+/g, ' ').trim());
     const qWords = cleaned.split(/\s+/).filter(w => w.length > 2);
     if (!qWords.length) continue;
+
+    // 3. Nájdi najlepší zájazd podľa názvu
     let bestTour = null, bestScore = 0;
     for (const t of tours) {
       const tClean = stripDia(t.name);
@@ -535,43 +561,75 @@ function batchSelect() {
       const score = hits / Math.max(qWords.length, 1);
       if (score > bestScore) { bestScore = score; bestTour = t; }
     }
-    if (bestTour && bestScore >= 0.45) {
-      const wasNew = !selIds.has(bestTour.id);
-      if (wasNew) {
-        selIds.add(bestTour.id);
-        const el = document.querySelector(`.ti[data-id="${bestTour.id}"]`);
-        if (el) {
-          el.classList.add('sel');
-          const cb = el.querySelector('input'); if(cb) cb.checked=true;
-          // Pridaj thumbnail strip a spusti auto-výber
-          if (bestTour.imgs && bestTour.imgs.length > 1) {
-            let strip = document.getElementById('ti-imgs-' + bestTour.id);
-            if (!strip) {
-              const activeUrl = tourImgUrl(bestTour);
-              strip = document.createElement('div');
-              strip.className='ti-imgs'; strip.id='ti-imgs-'+bestTour.id;
-              strip.innerHTML = bestTour.imgs.map(url =>
-                `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${imgProxyUrl(url)}"
-                 data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
-                 onclick="selectImg('${esc(bestTour.id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`
-              ).join('');
-              el.appendChild(strip);
-            }
-            triggerAutoSelect(bestTour.id);
+
+    if (!bestTour || bestScore < 0.45) {
+      notFound.push(line.replace(/\(?\d{2}\.\d{2}\.\d{4}.+/, '').trim().slice(0, 35));
+      continue;
+    }
+
+    // 4. Ak máme dátumy, hľadaj konkrétny termín
+    if (wantDateFrom && bestTour.terms && bestTour.terms.length) {
+      const term = bestTour.terms.find(tm =>
+        tm.dateFrom === wantDateFrom &&
+        (!wantDateTo || tm.dateTo === wantDateTo)
+      );
+      if (term) {
+        // Nastav override len ak sa skutočne líši od aktuálnych hodnôt
+        bestTour._overrideDateFrom = term.dateFrom;
+        bestTour._overrideDateTo   = term.dateTo;
+        bestTour._overrideDays     = term.days;
+        bestTour._overridePrice    = term.price;   // môže byť null ak cena nie je v termíne
+        const priceInfo = term.price ? ` – ${Math.round(term.price)} €` : '';
+        details.push(`✅ ${bestTour.name.slice(0, 32)}… (${dateMatch[0]}${priceInfo})`);
+      } else {
+        // Termín nenájdený v XML
+        noTerm.push(`${bestTour.name.slice(0, 28)}… (${dateMatch[0]})`);
+        // Vyber aspoň zájazd bez override
+        delete bestTour._overrideDateFrom; delete bestTour._overrideDateTo;
+        delete bestTour._overrideDays;     delete bestTour._overridePrice;
+      }
+    } else {
+      // Bez dátumov → normálny výber, zruš prípadný starý override
+      delete bestTour._overrideDateFrom; delete bestTour._overrideDateTo;
+      delete bestTour._overrideDays;     delete bestTour._overridePrice;
+      details.push(`✅ ${bestTour.name.slice(0, 40)}`);
+    }
+
+    // 5. Pridaj do výberu (ak ešte nie je)
+    const wasNew = !selIds.has(bestTour.id);
+    if (wasNew) {
+      selIds.add(bestTour.id);
+      const el = document.querySelector(`.ti[data-id="${bestTour.id}"]`);
+      if (el) {
+        el.classList.add('sel');
+        const cb = el.querySelector('input'); if (cb) cb.checked = true;
+        if (bestTour.imgs && bestTour.imgs.length > 1) {
+          let strip = document.getElementById('ti-imgs-' + bestTour.id);
+          if (!strip) {
+            const activeUrl = tourImgUrl(bestTour);
+            strip = document.createElement('div');
+            strip.className = 'ti-imgs'; strip.id = 'ti-imgs-' + bestTour.id;
+            strip.innerHTML = bestTour.imgs.map(url =>
+              `<img class="ti-thumb${url === activeUrl ? ' sel' : ''}" src="${imgProxyUrl(url)}"
+               data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
+               onclick="selectImg('${esc(bestTour.id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`
+            ).join('');
+            el.appendChild(strip);
           }
+          triggerAutoSelect(bestTour.id);
         }
       }
-      found++;
-    } else {
-      notFound.push(line.replace(/\(?\d{2}\.\d{2}\.\d{4}.+/,'').trim().slice(0,35));
     }
+    found++;
   }
+
   updCnt(); updBtn();
   const res = document.getElementById('batch-res');
-  let msg = `✅ Nájdené: ${found} / ${lines.length}`;
-  if (notFound.length) msg += `\n⚠️ Nenájdené: ${notFound.slice(0,4).join(', ')}${notFound.length>4?` +${notFound.length-4} ďalší`:''}`;
-  res.textContent = msg;
-  res.style.whiteSpace = 'pre-line';
+  let msg = `Nájdené: ${found} / ${lines.length}`;
+  if (noTerm.length)   msg += `\n⚠️ Termín nenájdený v XML: ${noTerm.slice(0,3).join(', ')}${noTerm.length>3?` +${noTerm.length-3}`:''}`;
+  if (notFound.length) msg += `\n❌ Nenájdené: ${notFound.slice(0,3).join(', ')}${notFound.length>3?` +${notFound.length-3} ďalší`:''}`;
+  res.innerHTML = details.map(d => `<div>${d}</div>`).join('') + (msg ? `<div style="margin-top:3px;opacity:.7">${msg.replace(/\n/g,'<br>')}</div>` : '');
+  res.style.whiteSpace = 'normal';
 }
 
 // ── Init ──
@@ -651,17 +709,26 @@ function parseXML(xml) {
     const dm2 = !dm && name.match(/^([A-ZÁČĎÉÍĹĽŇÓÔŔŠŤÚÝŽÄ][^\d–\-\n]{1,28}?)\s*[–\-]/);
     const dest = dm ? dm[1].trim() : (dm2 ? dm2[1].trim() : '');
 
-    // Dátumy a počet dní
+    // Dátumy a počet dní – uložíme aj všetky termíny s cenami
     const dateEls = Array.from(item.querySelectorAll('date'));
-    const dateFroms = dateEls.map(e=>e.getAttribute('date_from')).filter(Boolean).sort();
-    const firstDateEl = dateEls.find(e=>e.getAttribute('date_from')===dateFroms[0]);
-    const dateFrom = dateFroms[0] || null;
-    const dateTo = firstDateEl ? firstDateEl.getAttribute('date_to') : null;
-    const nightsEl = firstDateEl ? firstDateEl.querySelector('nights') : null;
-    const nights = nightsEl ? parseInt(nightsEl.textContent)||0 : 0;
-    const days = dateTo && dateFrom
-      ? Math.round((new Date(dateTo)-new Date(dateFrom))/86400000)+1
-      : (nights>0 ? nights+1 : 0);
+    const terms = dateEls.map(de => {
+      const df = de.getAttribute('date_from');
+      const dt = de.getAttribute('date_to');
+      if (!df) return null;
+      const pEl = de.querySelector('final_price');
+      const price = pEl ? parseFloat(pEl.textContent) : null;
+      const nEl  = de.querySelector('nights');
+      const nts  = nEl ? parseInt(nEl.textContent)||0 : 0;
+      const dys  = dt && df ? Math.round((new Date(dt)-new Date(df))/86400000)+1 : (nts>0?nts+1:0);
+      return { dateFrom: df, dateTo: dt||null, price: (!isNaN(price)&&price>0)?price:null, days: dys };
+    }).filter(Boolean);
+    const dateFroms = terms.map(t=>t.dateFrom).sort();
+    const firstTerm = terms.find(t=>t.dateFrom===dateFroms[0]) || terms[0] || null;
+    const firstDateEl = firstTerm ? dateEls.find(e=>e.getAttribute('date_from')===firstTerm.dateFrom) : null;
+    const dateFrom = firstTerm ? firstTerm.dateFrom : null;
+    const dateTo   = firstTerm ? firstTerm.dateTo   : null;
+    const nights   = firstDateEl ? (parseInt((firstDateEl.querySelector('nights')||{}).textContent)||0) : 0;
+    const days = firstTerm ? firstTerm.days : (nights>0?nights+1:0);
 
     // Kategória (1. trip)
     const catEl = item.querySelector('category');
@@ -675,6 +742,7 @@ function parseXML(xml) {
       maxDiscount: discounts.length ? Math.max(...discounts) : 0,
       nearestDate: dateFrom,
       dateFrom, dateTo, days,
+      terms,   // [{dateFrom, dateTo, price, days}] – všetky dostupné termíny
     };
   }).filter(Boolean).filter(t => t.id && t.name);
 }
@@ -1320,10 +1388,10 @@ function drawStrip(ctx,w,h,tour,tImg,lImg){
   const textX = p + actualLogoW + Math.max(4, Math.round(p*.9));
   // Cena (badge) vpravo pred fotkou – proporcionálna veľkosť
   let priceRight = w - imgW - p;
-  if(tour.minPrice){
+  if(tourPrice(tour)){
     const pfs = Math.max(7, Math.round(h*.30));
     ctx.font = `bold ${pfs}px Ubuntu,Arial`;
-    const ps = `od ${Math.round(tour.minPrice)} €`;
+    const ps = tourPriceStr(tour);
     const pw = ctx.measureText(ps).width;
     const bpad = Math.round(p*.65);
     const bh = Math.round(h*.60), by = Math.round((h-bh)/2);
@@ -1355,11 +1423,11 @@ function drawHorizontal(ctx,w,h,tour,tImg,lImg){
   // ── Spodná zóna (rezervovaná): cena + web ──
   const priceZoneH = Math.round(h*.28);
   const priceZoneTop = h - priceZoneH;
-  if(tour.minPrice){
+  if(tourPrice(tour)){
     const cfs=Math.round(h*.19);
     ctx.font=`bold ${cfs}px Ubuntu,Arial`; ctx.fillStyle=C.green;
     ctx.textBaseline='bottom'; ts(ctx);
-    ctx.fillText(`od ${Math.round(tour.minPrice)} €`,p,h-p*.4); tc(ctx);
+    ctx.fillText(tourPriceStr(tour),p,h-p*.4); tc(ctx);
   }
   if(tour.maxDiscount>0){
     const zfs=Math.round(h*.09);
@@ -1420,10 +1488,10 @@ function drawLandscape(ctx,w,h,tour,tImg,lImg){
   ctx.textAlign='left';
   const priceFs=Math.round(h*.092);
   let curBot=bot-Math.round(h*.028*1.4);
-  if(tour.minPrice){
+  if(tourPrice(tour)){
     ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green;
     ctx.textBaseline='bottom'; ts(ctx);
-    ctx.fillText(`od ${Math.round(tour.minPrice)} €`,p,curBot); tc(ctx);
+    ctx.fillText(tourPriceStr(tour),p,curBot); tc(ctx);
     curBot-=Math.round(priceFs*1.1);
   }
   if(tour.maxDiscount>0){
@@ -1502,10 +1570,10 @@ function drawSquare(ctx,w,h,tour,tImg,lImg){
   ctx.font=`bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle=C.white; ctx.textBaseline='top';
   const nl=wrap(ctx,tour.name,p,ty,w-p*2,Math.round(nameFs*1.22),2); ty+=nl+Math.round(panH*.04);
   // Cena – ak ostáva miesto
-  if(tour.minPrice&&ty<h-Math.round(panH*.1)){
+  if(tourPrice(tour) &&ty<h-Math.round(panH*.1)){
     const priceFs=Math.min(Math.round(panH*.20),Math.round((h-ty-pad2)*.80));
     ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green; ctx.textBaseline='top';
-    ctx.fillText(`od ${Math.round(tour.minPrice)} €`,p,ty);
+    ctx.fillText(tourPriceStr(tour),p,ty);
   }
   ctx.font=`${Math.round(panH*.085)}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.32)';
   ctx.textAlign='right'; ctx.textBaseline='bottom'; ctx.fillText('ckdaka.sk',w-p,h-pad2);
@@ -1548,7 +1616,7 @@ function drawSkyscraper(ctx,w,h,tour,tImg,lImg){
   // Rezervuj priestor zdola: web + cena + CTA + separator
   const ctaH    = Math.round(h*.068);
   const priceFs0= Math.max(Math.round(w*.130), Math.round(h*.055));
-  const priceH  = tour.minPrice ? Math.round(priceFs0*1.3)+Math.round(p*.4) : 0;
+  const priceH  = tourPrice(tour) ? Math.round(priceFs0*1.3)+Math.round(p*.4) : 0;
   const webH    = Math.round(webFs*1.5);
   const sepH    = Math.round(p*.5)+2;
   const reserved= webH+priceH+ctaH+sepH+Math.round(p*1.5);
@@ -1581,11 +1649,11 @@ function drawSkyscraper(ctx,w,h,tour,tImg,lImg){
   ctx.textAlign='left'; ty+=ctaH+Math.round(p*.45);
 
   // Cena
-  if(tour.minPrice&&ty<h-webH-p){
+  if(tourPrice(tour) &&ty<h-webH-p){
     const priceFs=Math.min(priceFs0,Math.round((h-ty-webH-p)*.80));
     ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green;
     ctx.textBaseline='top'; ctx.textAlign='center';
-    ctx.fillText(`od ${Math.round(tour.minPrice)} €`,w/2,ty);
+    ctx.fillText(tourPriceStr(tour),w/2,ty);
     ctx.textAlign='left';
   }
 
@@ -1617,12 +1685,12 @@ function drawStory(ctx,w,h,tour,tImg,lImg){
   // Cena
   const priceBot=bot-Math.round(webFs*1.6);
   const priceFs=Math.round(w*.115);
-  if(tour.minPrice){
+  if(tourPrice(tour)){
     ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green; ctx.textBaseline='bottom';
-    ts(ctx); ctx.fillText(`od ${Math.round(tour.minPrice)} €`,p,priceBot); tc(ctx);
+    ts(ctx); ctx.fillText(tourPriceStr(tour),p,priceBot); tc(ctx);
   }
   // Zľava
-  const discBot=priceBot-(tour.minPrice?Math.round(priceFs*1.1):0);
+  const discBot=priceBot-(tourPrice(tour)?Math.round(priceFs*1.1):0);
   if(tour.maxDiscount>0){
     const dfs=Math.round(w*.05);
     ctx.font=`${dfs}px Ubuntu,Arial`; ctx.fillStyle=C.greenLight; ctx.textBaseline='bottom';
@@ -1747,11 +1815,16 @@ function drawLightPrice(ctx, tour, x, baseY, bigFs, smFs, maxW) {
   maxW = maxW || 99999;
   ctx.textBaseline = 'bottom'; ctx.fillStyle = C.primary;
 
-  const priceStr = `${tour.minPrice.toFixed(2).replace('.',',')} €`;
-  const daysStr  = tour.days > 0 ? `/ ${tour.days} dní` : '';
+  const price = tourPrice(tour);
+  if (!price) return 0;
+  const priceStr = price % 1 === 0
+    ? `${Math.round(price)} €`
+    : `${price.toFixed(2).replace('.', ',')} €`;
+  const prefix   = tourPricePrefix(tour);   // 'už za' alebo 'od'
+  const daysStr  = tourDays(tour) > 0 ? `/ ${tourDays(tour)} dní` : '';
 
   ctx.font = `${smFs}px Ubuntu,Arial`;
-  const uzaW  = ctx.measureText('už za ').width + smFs * 0.15;
+  const uzaW  = ctx.measureText(prefix + ' ').width + smFs * 0.15;
   const daysW = daysStr ? ctx.measureText(' ' + daysStr).width + smFs * 0.2 : 0;
   ctx.font = `bold ${bigFs}px Ubuntu,Arial`;
   const priceW = ctx.measureText(priceStr).width;
@@ -1759,13 +1832,13 @@ function drawLightPrice(ctx, tour, x, baseY, bigFs, smFs, maxW) {
   const fullW = uzaW + priceW + daysW;
 
   if (fullW <= maxW) {
-    // Celá verzia: "už za X,XX € / N dní"
-    ctx.font = `${smFs}px Ubuntu,Arial`;  ctx.fillText('už za', x, baseY);
+    // Celá verzia: "už za/od X,XX € / N dní"
+    ctx.font = `${smFs}px Ubuntu,Arial`;  ctx.fillText(prefix, x, baseY);
     ctx.font = `bold ${bigFs}px Ubuntu,Arial`; ctx.fillText(priceStr, x + uzaW, baseY);
     if (daysStr) { ctx.font = `${smFs}px Ubuntu,Arial`; ctx.fillText(daysStr, x + uzaW + priceW + smFs*0.2, baseY); }
   } else if (uzaW + priceW <= maxW) {
     // Bez "/ N dní"
-    ctx.font = `${smFs}px Ubuntu,Arial`;  ctx.fillText('už za', x, baseY);
+    ctx.font = `${smFs}px Ubuntu,Arial`;  ctx.fillText(prefix, x, baseY);
     ctx.font = `bold ${bigFs}px Ubuntu,Arial`; ctx.fillText(priceStr, x + uzaW, baseY);
   } else {
     // Len cena – zmenšená ak treba
@@ -1781,12 +1854,12 @@ function drawLightPrice(ctx, tour, x, baseY, bigFs, smFs, maxW) {
 
 // Dátum s ikonou
 function drawLightDate(ctx, tour, x, y, fs, maxW) {
-  if (!tour.dateFrom) return;
+  const df = tourDateFrom(tour);
+  if (!df) return;
   ctx.font = `${fs}px Ubuntu,Arial`; ctx.fillStyle = C.primary; ctx.textBaseline = 'top';
-  const dateStr = tour.dateTo
-    ? `${formatDate(tour.dateFrom)} – ${formatDate(tour.dateTo)}`
-    : formatDate(tour.dateFrom);
-  ctx.fillText(`📅 ${dateStr}`, x, y);
+  const dt = tourDateTo(tour);
+  const dateStr = dt ? `${formatDate(df)} – ${formatDate(dt)}` : formatDate(df);
+  ctx.fillText(`📅 ${dateStr}`, x, y);
 }
 
 // ── Hlavná funkcia svetlého štýlu ──
@@ -1866,7 +1939,7 @@ function drawLightPortrait(ctx, w, h, tour, tImg, lImg) {
     Math.round(h * (h > 900 ? 0.027 : 0.034)),
     Math.round(w * 0.09)
   );
-  if (tour.minPrice && ty + bigFs < bottomY) {
+  if(tourPrice(tour) && ty + bigFs < bottomY) {
     ty += drawLightPrice(ctx, tour, tp, ty + bigFs, bigFs, smFs, maxW);
   }
 
@@ -1875,7 +1948,7 @@ function drawLightPortrait(ctx, w, h, tour, tImg, lImg) {
     Math.round(h * (h > 900 ? 0.026 : 0.032)),
     Math.round(w * 0.082)
   );
-  if (tour.dateFrom && ty + dFs*1.4 < bottomY) {
+  if (tourDateFrom(tour) && ty + dFs*1.4 < bottomY) {
     drawLightDate(ctx, tour, tp, ty, dFs, maxW);
   }
 
@@ -1926,11 +1999,11 @@ function drawLightLandscape(ctx, w, h, tour, tImg, lImg) {
 
   const bigFs = Math.round(h * 0.13);
   const smFs  = Math.round(h * 0.065);
-  if (tour.minPrice && ty + bigFs < bottomY) {
+  if(tourPrice(tour) && ty + bigFs < bottomY) {
     ty += drawLightPrice(ctx, tour, tx, ty + bigFs, bigFs, smFs, maxW);
   }
   const dFs = Math.round(h * 0.065);
-  if (tour.dateFrom && ty + dFs*1.4 < bottomY) {
+  if (tourDateFrom(tour) && ty + dFs*1.4 < bottomY) {
     drawLightDate(ctx, tour, tx, ty, dFs, maxW);
   }
 
@@ -1957,10 +2030,10 @@ function drawLightStrip(ctx, w, h, tour, tImg, lImg) {
   const textX = lx + actualLogoW + Math.round(p*.9);
   // Cena
   let priceRight = w - p;
-  if (tour.minPrice) {
+  if (tourPrice(tour)) {
     const pfs = Math.max(7, Math.round(h*.28));
     ctx.font = `bold ${pfs}px Ubuntu,Arial`; ctx.fillStyle = C.green;
-    const ps = `od ${Math.round(tour.minPrice)} €`;
+    const ps = tourPriceStr(tour);
     const pw = ctx.measureText(ps).width;
     const bpad = Math.round(p*.6);
     const bh = Math.round(h*.58), by = Math.round((h-bh)/2);
@@ -2057,11 +2130,11 @@ function drawLightStampPortrait(ctx, w, h, tour, tImg, lImg) {
 
   const bFs  = Math.min(Math.round(h * (h > 900 ? 0.056 : 0.072)), Math.round(w * 0.145));
   const bSfs = Math.min(Math.round(h * (h > 900 ? 0.027 : 0.034)), Math.round(w * 0.09));
-  if (tour.minPrice && ty + bFs < bottomY) {
+  if(tourPrice(tour) && ty + bFs < bottomY) {
     ty += drawLightPrice(ctx, tour, tp, ty + bFs, bFs, bSfs, maxW);
   }
   const dFs2 = Math.min(Math.round(h * (h > 900 ? 0.026 : 0.032)), Math.round(w * 0.082));
-  if (tour.dateFrom && ty + dFs2 * 1.4 < bottomY) {
+  if (tourDateFrom(tour) && ty + dFs2 * 1.4 < bottomY) {
     drawLightDate(ctx, tour, tp, ty, dFs2, maxW);
   }
 
@@ -2113,11 +2186,11 @@ function drawLightStampLandscape(ctx, w, h, tour, tImg, lImg) {
   ty += nlH + Math.round(h * 0.06);
 
   const bFs = Math.round(h * 0.13);
-  if (tour.minPrice && ty + bFs < bottomY) {
+  if(tourPrice(tour) && ty + bFs < bottomY) {
     ty += drawLightPrice(ctx, tour, tx, ty + bFs, bFs, Math.round(h * 0.065), maxW);
   }
   const dFs3 = Math.round(h * 0.065);
-  if (tour.dateFrom && ty + dFs3 * 1.4 < bottomY) {
+  if (tourDateFrom(tour) && ty + dFs3 * 1.4 < bottomY) {
     drawLightDate(ctx, tour, tx, ty, dFs3, maxW);
   }
 
