@@ -152,9 +152,8 @@ body{font-family:'Ubuntu','Helvetica Neue',Helvetica,Arial,sans-serif;background
             align-items:flex-start;justify-content:flex-start}
 #modal-wrap.fit{align-items:center;justify-content:center}
 #modal-wrap img{display:block;image-rendering:auto}
-#modal-wrap.actual img{image-rendering:pixelated}
 #modal-wrap.fit img{max-width:calc(96vw - 32px);max-height:calc(96vh - 100px);
-                    width:auto!important;height:auto!important;image-rendering:auto}
+                    width:auto!important;height:auto!important}
 #modal-ft{padding:10px 16px;background:#f5f7fb;border-top:1px solid var(--gray);
           display:flex;align-items:center;gap:12px;flex-shrink:0}
 #modal-ft a{padding:6px 16px;background:var(--green);color:#fff;border-radius:6px;
@@ -2144,7 +2143,7 @@ function openModal(previewUrl, dlUrl, fname, w, h) {
       <div id="modal-hd">
         <span class="mname" title="${esc(fname)}">${esc(fname)}</span>
         <span class="mdim">${w}×${h} px</span>
-        <button id="mbtn-real" onclick="toggleModalSize(${w},${h})">📐 Skutočná veľkosť</button>
+        <button id="mbtn-real" onclick="toggleModalSize(${w},${h})" ${w<600&&h<500?'style="display:none"':''}>📐 Skutočná veľkosť</button>
         <button onclick="closeModal()">✕ Zavrieť</button>
       </div>
       <div id="modal-wrap" class="fit">
@@ -2169,16 +2168,17 @@ function toggleModalSize(w, h) {
   const img  = document.getElementById('modal-img');
   const btn  = document.getElementById('mbtn-real');
   if (_modalReal) {
-    wrap.classList.remove('fit'); wrap.classList.add('actual');
-    img.style.width = w+'px'; img.style.height = h+'px';
+    wrap.classList.remove('fit');
+    // Nastav veľkosť cez attribute aby prepísalo aj !important z .fit
+    img.setAttribute('style', `width:${w}px;height:${h}px;display:block`);
     btn.textContent = '🔍 Prispôsobiť obrazovke'; btn.classList.add('mbtn-on');
     setTimeout(() => {
       wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
       wrap.scrollTop  = (wrap.scrollHeight - wrap.clientHeight) / 2;
     }, 50);
   } else {
-    wrap.classList.remove('actual'); wrap.classList.add('fit');
-    img.style.width=''; img.style.height='';
+    wrap.classList.add('fit');
+    img.setAttribute('style', 'display:block');
     btn.textContent = '📐 Skutočná veľkosť'; btn.classList.remove('mbtn-on');
   }
 }
