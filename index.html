@@ -1763,10 +1763,13 @@ function drawLightPortrait(ctx, w, h, tour, tImg, lImg) {
   // Dostupný priestor od ty až po spodnú líštu
   const bottomY = h - lhBar - Math.round(h * 0.012);
 
-  // Názov zájazdu – úzke formáty dostanú viac riadkov
+  // Názov zájazdu – fonty obmedzené aj šírkou (pri 160px canvas)
   const nameLines  = w < 220 ? 4 : 3;
-  const maxNameFs  = Math.round(h * (h > 900 ? 0.072 : 0.092));
-  const minNameFs  = Math.max(10, Math.round(h * (w < 220 ? 0.028 : 0.036)));
+  const maxNameFs  = Math.min(
+    Math.round(h * (h > 900 ? 0.072 : 0.092)),
+    Math.round(w * 0.17)   // pri 160px → max 27px, pri 300px → 51px
+  );
+  const minNameFs  = Math.max(10, Math.round(Math.min(h * 0.028, w * 0.11)));
   const nameFs     = autoFit(ctx, tour.name, maxW, nameLines, minNameFs, maxNameFs);
   const nameLh     = Math.round(nameFs * 1.22);
   ctx.font         = `bold ${nameFs}px Ubuntu,Arial`;
@@ -1774,15 +1777,24 @@ function drawLightPortrait(ctx, w, h, tour, tImg, lImg) {
   const nlH        = wrap(ctx, tour.name, tp, ty, maxW, nameLh, nameLines);
   ty += nlH + Math.round(h * 0.022);
 
-  // Cena – len ak sa zmestí
-  const bigFs = Math.round(h * (h > 900 ? 0.056 : 0.072));
-  const smFs  = Math.round(h * (h > 900 ? 0.027 : 0.034));
+  // Cena – obmedzená aj šírkou
+  const bigFs = Math.min(
+    Math.round(h * (h > 900 ? 0.056 : 0.072)),
+    Math.round(w * 0.145)  // pri 160px → max 23px
+  );
+  const smFs  = Math.min(
+    Math.round(h * (h > 900 ? 0.027 : 0.034)),
+    Math.round(w * 0.09)
+  );
   if (tour.minPrice && ty + bigFs < bottomY) {
     ty += drawLightPrice(ctx, tour, tp, ty + bigFs, bigFs, smFs, maxW);
   }
 
-  // Dátum – len ak sa zmestí
-  const dFs = Math.round(h * (h > 900 ? 0.026 : 0.032));
+  // Dátum – obmedzený aj šírkou
+  const dFs = Math.min(
+    Math.round(h * (h > 900 ? 0.026 : 0.032)),
+    Math.round(w * 0.082)
+  );
   if (tour.dateFrom && ty + dFs*1.4 < bottomY) {
     drawLightDate(ctx, tour, tp, ty, dFs, maxW);
   }
@@ -1953,18 +1965,22 @@ function drawLightStampPortrait(ctx, w, h, tour, tImg, lImg) {
   const bottomY = h - lh - Math.round(h * 0.015);
 
   const nameLines2 = w < 220 ? 4 : 3;
-  const maxNameFs  = Math.round(h * (h > 900 ? 0.072 : 0.092));
-  const minNameFs  = Math.max(10, Math.round(h * (w < 220 ? 0.028 : 0.036)));
+  const maxNameFs  = Math.min(
+    Math.round(h * (h > 900 ? 0.072 : 0.092)),
+    Math.round(w * 0.17)
+  );
+  const minNameFs  = Math.max(10, Math.round(Math.min(h * 0.028, w * 0.11)));
   const nameFs     = autoFit(ctx, tour.name, maxW, nameLines2, minNameFs, maxNameFs);
   ctx.font = `bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle = C.green; ctx.textBaseline = 'top';
   const nlH = wrap(ctx, tour.name, tp, ty, maxW, Math.round(nameFs * 1.22), nameLines2);
   ty += nlH + Math.round(h * 0.025);
 
-  const bFs = Math.round(h * (h > 900 ? 0.056 : 0.072));
+  const bFs  = Math.min(Math.round(h * (h > 900 ? 0.056 : 0.072)), Math.round(w * 0.145));
+  const bSfs = Math.min(Math.round(h * (h > 900 ? 0.027 : 0.034)), Math.round(w * 0.09));
   if (tour.minPrice && ty + bFs < bottomY) {
-    ty += drawLightPrice(ctx, tour, tp, ty + bFs, bFs, Math.round(h * (h > 900 ? 0.027 : 0.034)), maxW);
+    ty += drawLightPrice(ctx, tour, tp, ty + bFs, bFs, bSfs, maxW);
   }
-  const dFs2 = Math.round(h * (h > 900 ? 0.026 : 0.032));
+  const dFs2 = Math.min(Math.round(h * (h > 900 ? 0.026 : 0.032)), Math.round(w * 0.082));
   if (tour.dateFrom && ty + dFs2 * 1.4 < bottomY) {
     drawLightDate(ctx, tour, tp, ty, dFs2, maxW);
   }
