@@ -213,6 +213,30 @@ details[open].batch-wrap summary::before{transform:rotate(90deg)}
 </head>
 <body>
 
+<!-- ── Prihlasovacia obrazovka ── -->
+<div id="login-overlay" style="
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:linear-gradient(135deg,#1F315F 0%,#2D4A7A 100%);
+  align-items:center; justify-content:center; flex-direction:column;
+  font-family:Ubuntu,Arial,sans-serif;
+">
+  <img src="https://cestovnakancelariadaka.sk/assets/ck/images/layout/logo.png"
+       alt="CK DAKA" style="height:56px;margin-bottom:32px;filter:brightness(0) invert(1);"
+       onerror="this.style.display='none'">
+  <div style="background:#fff;border-radius:16px;padding:36px 40px;box-shadow:0 8px 40px rgba(0,0,0,.35);min-width:300px;text-align:center;">
+    <div style="font-size:18px;font-weight:700;color:#1F315F;margin-bottom:6px;">Generátor bannerov</div>
+    <div style="font-size:13px;color:#888;margin-bottom:24px;">Zadajte prístupové heslo</div>
+    <input id="login-pw" type="password" placeholder="Heslo"
+      style="width:100%;box-sizing:border-box;padding:12px 16px;font-size:16px;border:2px solid #dde;border-radius:8px;outline:none;margin-bottom:12px;"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="login-err" style="color:#c0392b;font-size:13px;min-height:18px;margin-bottom:8px;"></div>
+    <button onclick="doLogin()"
+      style="width:100%;padding:13px;background:#67982f;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;">
+      Prihlásiť sa
+    </button>
+  </div>
+</div>
+
 <div id="hdr">
   <img id="logo-el" src="https://cestovnakancelariadaka.sk/assets/ck/images/layout/logo.png" alt="CK DAKA"
        onerror="this.style.display='none';document.getElementById('logo-txt').style.display='block'">
@@ -2041,8 +2065,40 @@ function toggleModalSize(w, h) {
   }
 }
 
+// ── Prihlásenie ──
+const _PW_KEY  = 'ckdaka_bg_auth';
+const _PW_HASH = '7a9b3f2e1d8c4056'; // interný token uložený po správnom hesle
+
+function _simpleHash(s) {
+  // Jednoduchá kontrola: porovná heslo priamo (uložené ako token v localStorage)
+  return s === '5CKDAKA5';
+}
+
+function doLogin() {
+  const val = document.getElementById('login-pw').value;
+  if (_simpleHash(val)) {
+    localStorage.setItem(_PW_KEY, _PW_HASH);
+    document.getElementById('login-overlay').style.display = 'none';
+    init();
+  } else {
+    document.getElementById('login-err').textContent = 'Nesprávne heslo';
+    document.getElementById('login-pw').focus();
+  }
+}
+
+function checkAuth() {
+  if (localStorage.getItem(_PW_KEY) === _PW_HASH) {
+    // Už prihlásený
+    init();
+  } else {
+    const ol = document.getElementById('login-overlay');
+    ol.style.display = 'flex';
+    setTimeout(() => document.getElementById('login-pw').focus(), 100);
+  }
+}
+
 // ── Start ──
-init();
+checkAuth();
 </script>
 </body>
 </html>
