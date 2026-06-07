@@ -7,14 +7,18 @@ const https = require('https');
 const http  = require('http');
 const { URL } = require('url');
 
-// Whitelist povolených domén (bezpečnostná ochrana)
+// Whitelist povolených domén
 const ALLOWED = [
   'ckdaka.sk',
+  'cestovnakancelariadaka.sk',
   'reisesysteme.de',
   'invia.sk',
   'holidaycheck.com',
   'tui.sk',
   'exim.sk',
+  'pkgstatic.com',
+  'static.invia.sk',
+  'img.invia.sk',
 ];
 
 function isAllowed(hostname) {

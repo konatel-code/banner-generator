@@ -301,15 +301,34 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 }
 
 // ── Config ──
-// Proxy endpoint podľa prostredia:
-// - localhost → lokálny Node.js server (SPUSTI.bat)
-// - netlify.app → Netlify serverless funkcia
-// - github.io / iný server → corsproxy.io (verejný CORS proxy, zadarmo)
-const isLocal    = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const isNetlify  = location.hostname.includes('netlify.app') || location.hostname.includes('netlify.com');
-const PROXY = isLocal   ? '/proxy?url='
-            : isNetlify ? '/proxy?url='
-            : 'https://corsproxy.io/?url=';
+// ── Proxy detekcia ──
+const _isLocal   = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const _isNetlify = location.hostname.includes('netlify.app') || location.hostname.includes('netlify.com');
+
+// Verejné CORS proxy (skúšajú sa v poradí, prvý funkčný vyhrá)
+const _PUBLIC_PROXIES = [
+  'https://corsproxy.io/?url=',
+  'https://api.allorigins.win/raw?url=',
+  'https://api.codetabs.com/v1/proxy?quest=',
+];
+
+let PROXY = (_isLocal || _isNetlify) ? '/proxy?url=' : _PUBLIC_PROXIES[0];
+
+// Otestuje verejné proxy a nastaví prvý funkčný (volá sa pri štarte)
+async function initProxy() {
+  if (_isLocal || _isNetlify) return; // vlastný proxy, test nie je potrebný
+  const testUrl = encodeURIComponent('https://ckdaka.sk/robots.txt');
+  for (const p of _PUBLIC_PROXIES) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 5000);
+      const r  = await fetch(p + testUrl, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (r.ok) { PROXY = p; console.log('Proxy OK:', p); return; }
+    } catch { /* skús ďalší */ }
+  }
+  console.warn('Žiadny verejný proxy nefunguje – obrázky sa nemusia načítať.');
+}
 const XML_URL = 'https://cestovnakancelariadaka.sk/export/cesys';
 const LOGO_URL = 'https://cestovnakancelariadaka.sk/assets/ck/images/layout/logo.png';
 
@@ -438,6 +457,7 @@ function batchSelect() {
 // ── Init ──
 async function init() {
   buildFmtUI();
+  await initProxy();           // nájde funkčný CORS proxy pred načítaním
   await Promise.all([loadLogo(), loadTours()]);
 }
 
