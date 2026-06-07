@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CK DAKA – Generátor bannerov</title>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1F315F;--primary-dark:#182347;--primary-light:#2D4A7A;
+  --green:#67982f;--green-dark:#4f7322;--white:#fff;
+  --bg:#eef2f8;--gray:#dce4ef;
+  --border:#cdd5e0;--card:#ffffff;--text:#1F315F;
+}
+body{font-family:'Ubuntu','Helvetica Neue',Helvetica,Arial,sans-serif;background:var(--bg);color:#1a1a2e;min-height:100vh}
+
+/* ── HEADER ── */
+#hdr{background:var(--primary);color:#fff;padding:0 24px;height:58px;display:flex;align-items:center;gap:14px;
+     box-shadow:0 2px 10px rgba(0,0,0,.35);position:sticky;top:0;z-index:100}
+#hdr img{height:38px}
+#hdr h1{font-size:17px;font-weight:500;letter-spacing:.3px}
+#status{margin-left:auto;font-size:12px;opacity:.75;display:flex;align-items:center;gap:8px}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+      border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── LAYOUT ── */
+#layout{display:flex;height:calc(100vh - 58px);overflow:hidden}
+
+/* ── SIDEBAR ── */
+#sb{width:330px;min-width:330px;background:var(--primary);color:#fff;display:flex;flex-direction:column;overflow:hidden}
+#sb-top{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
+#sb-top h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;opacity:.6;margin-bottom:10px}
+#q{width:100%;padding:7px 11px;border:1px solid rgba(255,255,255,.2);border-radius:6px;
+   background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-family:inherit}
+#q::placeholder{color:rgba(255,255,255,.45)}
+#q:focus{outline:none;border-color:var(--green);background:rgba(255,255,255,.15)}
+.sa{display:flex;gap:6px;margin-top:8px}
+.sa button{flex:1;padding:5px;font-size:11px;border:1px solid rgba(255,255,255,.25);border-radius:4px;
+           background:transparent;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s}
+.sa button:hover{background:rgba(255,255,255,.15)}
+#cnt{font-size:11px;opacity:.5;margin-top:6px}
+#tl{flex:1;overflow-y:auto;padding:6px 0}
+#tl::-webkit-scrollbar{width:3px}
+#tl::-webkit-scrollbar-track{background:rgba(0,0,0,.2)}
+#tl::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:2px}
+.ti{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;cursor:default;
+    transition:background .12s;border-bottom:1px solid rgba(255,255,255,.04)}
+.ti-row:hover{background:rgba(255,255,255,.07)}
+.ti.sel>.ti-row{background:rgba(103,152,47,.16);border-left:3px solid var(--green)}
+.ti input[type=checkbox]{accent-color:var(--green);width:15px;height:15px;flex-shrink:0;cursor:pointer}
+.ti-row img.ti-main-img{width:58px;height:40px;border-radius:4px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.08)}
+.ti-info{flex:1;min-width:0}
+.ti-name{font-size:12px;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ti-meta{font-size:11px;opacity:.55;margin-top:2px;display:flex;gap:8px}
+.ti-p{font-weight:700;color:#a0e060}
+
+/* ── MAIN ── */
+#main{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.pnl{background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 1px 5px rgba(0,0,0,.07)}
+.pnl-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--primary);margin-bottom:14px}
+
+/* Platforms */
+.ptabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.ptab{padding:7px 16px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;
+      border:2px solid var(--gray);background:#fff;color:#555;font-family:inherit;
+      transition:all .15s;display:flex;align-items:center;gap:6px;
+      box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.ptab:hover{border-color:var(--primary-light);color:var(--primary)}
+.ptab.on{background:var(--primary);border-color:var(--primary);color:#fff;
+         box-shadow:0 2px 10px rgba(31,49,95,.25)}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:8px}
+.fi{display:flex;align-items:center;gap:9px;padding:9px 11px;border:2px solid var(--gray);
+    border-radius:8px;cursor:pointer;transition:all .15s}
+.fi:hover{border-color:var(--primary-light)}
+.fi.on{border-color:var(--green);background:#f3f8ec}
+.fi input{accent-color:var(--green);cursor:pointer}
+.fi-box{width:30px;height:30px;background:var(--bg);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fi-mini{background:var(--primary);border-radius:2px}
+.fi-label{flex:1}
+.fi-name{font-size:12px;font-weight:500}
+.fi-sz{font-size:11px;color:#999}
+
+/* Actions */
+.abar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 0}
+.btn{padding:11px 28px;border-radius:9px;font-size:15px;font-weight:700;font-family:inherit;
+     cursor:pointer;border:none;transition:all .18s;display:flex;align-items:center;gap:8px;letter-spacing:.2px}
+.btn-o{background:var(--green);color:#fff;box-shadow:0 3px 12px rgba(103,152,47,.3)}
+.btn-o:hover:not(:disabled){background:#4f7322;transform:translateY(-2px);box-shadow:0 6px 18px rgba(103,152,47,.4)}
+.btn-o:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.btn-b{background:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(31,49,95,.2)}
+.btn-b:hover:not(:disabled){background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 5px 15px rgba(31,49,95,.3)}
+.btn-b:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.hint{font-size:12px;color:#888;font-weight:500}
+.fmt-sel{background:#fff;border:2px solid var(--gray);color:var(--primary);border-radius:8px;
+  padding:8px 12px;font-size:13px;font-family:inherit;cursor:pointer;height:42px;font-weight:500;
+  transition:border-color .15s}
+.fmt-sel:focus{outline:none;border-color:var(--green)}
+#pbw{background:var(--bg);border-radius:4px;height:5px;overflow:hidden;margin-top:10px;display:none}
+#pb{height:100%;background:var(--green);width:0;transition:width .25s}
+
+/* Preview */
+#pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.pc{background:#f4f7fb;border-radius:10px;overflow:hidden;border:1px solid var(--gray)}
+.pc-hd{padding:8px 13px;background:var(--primary);color:#fff;font-size:11px;
+       display:flex;justify-content:space-between;align-items:center}
+.pc-img{padding:10px;display:flex;justify-content:center;align-items:center;background:#e0e8f2;min-height:100px}
+.pc-img img{max-width:100%;max-height:200px;display:block;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.pc-ft{padding:9px 13px;display:flex;justify-content:space-between;align-items:center}
+.pc-ft span{font-size:11px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.dl{padding:5px 12px;background:var(--green);color:#fff;border:none;border-radius:5px;
+    font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;white-space:nowrap}
+.dl:hover{background:#558a26}
+.empty{text-align:center;padding:40px 20px;color:#bbb;grid-column:1/-1}
+.empty h3{font-size:15px;margin-bottom:6px}
+.empty p{font-size:12px}
+
+/* Select all formats */
+.fmeta{display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.fmeta button{padding:6px 14px;font-size:12px;font-weight:600;border:2px solid var(--gray);border-radius:8px;
+              background:#fff;cursor:pointer;font-family:inherit;color:var(--primary);
+              transition:all .15s;display:flex;align-items:center;gap:5px;
+              box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.fmeta button:hover{border-color:var(--primary);background:var(--bg);transform:translateY(-1px)}
+.fmeta button.fmeta-all{border-color:var(--green);color:var(--green)}
+.fmeta button.fmeta-all:hover{background:#f3f9e8;border-color:var(--green-dark)}
+.fmeta button.fmeta-clear{border-color:#e0e0e0;color:#888}
+.fmeta button.fmeta-clear:hover{border-color:#c0c0c0;color:#555}
+
+/* Clear all button */
+.btn-clear{padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;
+           cursor:pointer;border:2px solid #e0e0e0;background:#fff;color:#888;
+           transition:all .15s;display:flex;align-items:center;gap:6px}
+.btn-clear:hover{border-color:#d44;color:#c33;background:#fff5f5}
+
+/* ── MODAL VIEWER ── */
+#modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center}
+#modal-bg{position:absolute;inset:0;background:rgba(10,15,35,.88);cursor:pointer;backdrop-filter:blur(4px)}
+#modal-box{position:relative;z-index:1;background:#fff;border-radius:14px;
+           max-width:96vw;max-height:96vh;overflow:hidden;display:flex;flex-direction:column;
+           box-shadow:0 24px 80px rgba(0,0,0,.6);min-width:320px}
+#modal-hd{padding:11px 16px;background:var(--primary);color:#fff;display:flex;align-items:center;
+          gap:8px;font-size:12px;flex-shrink:0}
+#modal-hd .mname{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+#modal-hd .mdim{opacity:.55;white-space:nowrap}
+#modal-hd button{padding:5px 11px;border:1px solid rgba(255,255,255,.3);border-radius:5px;
+                 background:transparent;color:#fff;cursor:pointer;font-family:inherit;font-size:11px;
+                 white-space:nowrap;transition:background .15s}
+#modal-hd button:hover{background:rgba(255,255,255,.18)}
+#modal-hd .mbtn-on{background:var(--green);border-color:var(--green)}
+#modal-wrap{overflow:auto;flex:1;display:flex;background:#1a1f38;padding:16px;
+            align-items:flex-start;justify-content:flex-start}
+#modal-wrap.fit{align-items:center;justify-content:center}
+#modal-wrap img{display:block;image-rendering:pixelated}
+#modal-wrap.fit img{max-width:calc(96vw - 32px);max-height:calc(96vh - 100px);
+                    width:auto!important;height:auto!important;image-rendering:auto}
+#modal-ft{padding:10px 16px;background:#f5f7fb;border-top:1px solid var(--gray);
+          display:flex;align-items:center;gap:12px;flex-shrink:0}
+#modal-ft a{padding:6px 16px;background:var(--green);color:#fff;border-radius:6px;
+            text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap}
+#modal-ft a:hover{background:var(--green-dark)}
+#modal-ft .minfo{font-size:11px;color:#888}
+.pc-img img{cursor:pointer;transition:opacity .15s}
+.pc-img img:hover{opacity:.85}
+.pc-img::after{content:'🔍';position:absolute;bottom:14px;right:14px;font-size:16px;
+               pointer-events:none;opacity:.7}
+.pc-img{position:relative}
+
+/* Výber obrázka v zozname zájazdov */
+.ti-row{display:flex;align-items:center;gap:10px;padding:9px 10px;cursor:pointer;transition:background .12s}
+.ti-row input[type=checkbox]{flex-shrink:0;margin:0}
+.ti-imgs{display:flex;gap:5px;padding:5px 8px 8px;overflow-x:auto;
+         background:rgba(31,49,95,.04);border-top:1px solid var(--border)}
+.ti-imgs::-webkit-scrollbar{height:3px}
+.ti-imgs::-webkit-scrollbar-thumb{background:#aab;border-radius:2px}
+.ti-thumb{width:60px;height:44px;object-fit:cover;border-radius:4px;cursor:pointer;
+          border:2.5px solid transparent;flex-shrink:0;opacity:.75;transition:all .15s}
+.ti-thumb:hover{opacity:1;border-color:var(--border)}
+.ti-thumb.sel{border-color:var(--green);opacity:1;box-shadow:0 0 0 1px var(--green)}
+.ti-thumb.best-auto{box-shadow:0 0 0 2px var(--green),0 0 0 4px rgba(103,152,47,.35)}
+.ti-analyzing{font-size:10px;opacity:.55;padding:4px 8px;flex-shrink:0;white-space:nowrap;align-self:center}
+
+/* Dávkový výber */
+.batch-wrap{padding:8px 14px 4px;border-bottom:1px solid rgba(255,255,255,.07)}
+.batch-wrap summary{cursor:pointer;font-size:11px;font-weight:700;opacity:.65;list-style:none;
+  display:flex;align-items:center;gap:5px;padding:3px 0}
+.batch-wrap summary::-webkit-details-marker{display:none}
+.batch-wrap summary::before{content:'▶';font-size:9px;transition:transform .15s}
+details[open].batch-wrap summary::before{transform:rotate(90deg)}
+.batch-ta{width:100%;box-sizing:border-box;height:96px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.13);border-radius:6px;color:#fff;font-size:11px;
+  padding:7px 9px;font-family:inherit;resize:vertical;margin-top:6px;line-height:1.4}
+.batch-ta::placeholder{opacity:.4}
+.batch-btn{margin-top:5px;width:100%;padding:7px;background:var(--green);border:none;
+  border-radius:5px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit}
+.batch-btn:hover{background:var(--green-dark)}
+#batch-res{font-size:11px;margin-top:4px;opacity:.65;line-height:1.4}
+
+/* Prepínač štýlu */
+.style-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--bg);border-radius:10px;padding:8px 12px}
+.sty-lbl{font-size:12px;font-weight:700;color:var(--primary);opacity:.7;white-space:nowrap}
+.sty-btn{padding:8px 18px;border-radius:8px;border:2px solid rgba(31,49,95,.15);
+  background:#fff;color:var(--primary);font-size:13px;font-weight:600;
+  cursor:pointer;font-family:inherit;transition:all .15s;
+  box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.sty-btn:hover{border-color:var(--primary);box-shadow:0 2px 8px rgba(31,49,95,.14)}
+.sty-btn.on{background:var(--primary);border-color:var(--primary);color:#fff;
+  box-shadow:0 3px 12px rgba(31,49,95,.28)}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <img id="logo-el" src="https://cestovnakancelariadaka.sk/assets/ck/images/layout/logo.png" alt="CK DAKA"
+       onerror="this.style.display='none';document.getElementById('logo-txt').style.display='block'">
+  <span id="logo-txt" style="display:none;font-size:20px;font-weight:700;color:#fff;letter-spacing:1px">CK DAKA</span>
+  <h1>Generátor reklamných bannerov</h1>
+  <div id="status"><div class="spin" id="spin"></div><span id="st">Načítavam zájazdy…</span></div>
+</div>
+
+<div id="layout">
+  <aside id="sb">
+    <div id="sb-top">
+      <h2>Zájazdy</h2>
+      <input id="q" type="text" placeholder="🔍 Hľadať zájazd alebo destináciu…" oninput="filterTours()">
+      <div class="sa">
+        <button onclick="selAll()">✓ Vybrať všetky</button>
+        <button onclick="selNone()">✗ Zrušiť výber</button>
+      </div>
+      <div id="cnt">0 vybraných</div>
+    </div>
+    <details class="batch-wrap">
+      <summary>⚡ Rýchly výber zo zoznamu</summary>
+      <textarea class="batch-ta" id="batch-ta" placeholder="Vložte názvy zájazdov, jeden na riadok (dátumy sa ignorujú)…"></textarea>
+      <button class="batch-btn" onclick="batchSelect()">Vybrať zodpovedajúce zájazdy</button>
+      <div id="batch-res"></div>
+    </details>
+    <div id="tl"><div class="empty"><p>Načítavam…</p></div></div>
+  </aside>
+
+  <main id="main">
+    <div class="pnl">
+      <div class="pnl-t">Reklamné formáty</div>
+      <div class="ptabs" id="ptabs"></div>
+      <div class="fmeta">
+        <button onclick="selAllFmts()">☑ Táto platforma</button>
+        <button class="fmeta-all" onclick="selAllFmtsAll()">✓ Všetky platformy</button>
+        <button class="fmeta-clear" onclick="selNoFmtsAll()">✕ Zrušiť výber formátov</button>
+      </div>
+      <div class="fgrid" id="fgrid"></div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">Generovanie</div>
+      <div class="abar">
+        <div class="style-row">
+          <span class="sty-lbl">Štýl:</span>
+          <button class="sty-btn on" id="sty-dark" onclick="setStyle('dark',this)">🌑 Tmavý</button>
+          <button class="sty-btn" id="sty-light-wave" onclick="setStyle('light-wave',this)">☀️ Svetlý – vlnka</button>
+          <button class="sty-btn" id="sty-light-stamp" onclick="setStyle('light-stamp',this)">🎫 Svetlý – znamka</button>
+        </div>
+        <button class="btn btn-o" id="btn-gen" onclick="generate()" disabled>⚡ Generovať bannery</button>
+        <button class="btn btn-b" id="btn-zip" onclick="downloadZip()" disabled>⬇ Stiahnuť ZIP</button>
+        <select id="exp-fmt" class="fmt-sel" title="Formát exportu">
+          <option value="webp-ll">WebP 92% (menší súbor)</option>
+          <option value="png">PNG bezstratový</option>
+          <option value="jpeg-95">JPEG 95% (pre foto bannery)</option>
+          <option value="jpeg-90">JPEG 90% (najmenší, foto)</option>
+        </select>
+        <span class="hint" id="hint">Vyberte zájazdy a formáty</span>
+        <span style="margin-left:auto"></span>
+        <button class="btn-clear" onclick="clearAll()" title="Vymazať výber zájazdov, formátov aj vygenerované bannery">🗑 Vymazať všetko</button>
+      </div>
+      <div id="pbw"><div id="pb"></div></div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">Náhľad bannerov</div>
+      <div id="pgrid">
+        <div class="empty"><h3>Žiadne bannery</h3><p>Vyberte zájazdy a formáty, potom kliknite na Generovať bannery</p></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── roundRect polyfill ──
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+    r = typeof r==='number'?r:r[0]||0;
+    this.moveTo(x+r,y);this.lineTo(x+w-r,y);
+    this.quadraticCurveTo(x+w,y,x+w,y+r);this.lineTo(x+w,y+h-r);
+    this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);this.lineTo(x+r,y+h);
+    this.quadraticCurveTo(x,y+h,x,y+h-r);this.lineTo(x,y+r);
+    this.quadraticCurveTo(x,y,x+r,y);this.closePath();
+    return this;
+  };
+}
+
+// ── Config ──
+// Proxy endpoint podľa prostredia:
+// - localhost → lokálny Node.js server (SPUSTI.bat)
+// - netlify.app → Netlify serverless funkcia
+// - github.io / iný server → corsproxy.io (verejný CORS proxy, zadarmo)
+const isLocal    = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const isNetlify  = location.hostname.includes('netlify.app') || location.hostname.includes('netlify.com');
+const PROXY = isLocal   ? '/proxy?url='
+            : isNetlify ? '/proxy?url='
+            : 'https://corsproxy.io/?url=';
+const XML_URL = 'https://cestovnakancelariadaka.sk/export/cesys';
+const LOGO_URL = 'https://cestovnakancelariadaka.sk/assets/ck/images/layout/logo.png';
+
+// Korporátne farby: len modrá a zelená (bez oranžovej)
+const C = {
+  primary:'#1F315F', primaryDark:'#182347', primaryLight:'#2D4A7A',
+  green:'#67982f', greenDark:'#4f7322', greenLight:'#7db535',
+  white:'#FFFFFF', whiteAlpha:'rgba(255,255,255,0.9)',
+};
+
+// Platform brand icons (inline SVG)
+const PLAT_ICONS = {
+  'Google Ads': `<svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>`,
+  'Facebook / Instagram': `<svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2"/></svg>`,
+  'Microsoft Ads': `<svg width="16" height="16" viewBox="0 0 21 21" style="flex-shrink:0"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>`,
+  'TikTok Ads': `<svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.79 1.52V6.76a4.85 4.85 0 01-1.02-.07z" fill="#010101"/></svg>`,
+};
+
+const FORMATS = {
+  'Google Ads':[
+    {name:'Rectangle',      sz:'300×250',   w:300, h:250},
+    {name:'Leaderboard',    sz:'728×90',    w:728, h:90},
+    {name:'Half Page',      sz:'300×600',   w:300, h:600},
+    {name:'Wide Skyscraper',sz:'160×600',   w:160, h:600},
+    {name:'Billboard',      sz:'970×250',   w:970, h:250},
+    {name:'Mobile Banner',  sz:'320×50',    w:320, h:50},
+  ],
+  'Facebook / Instagram':[
+    {name:'News Feed',  sz:'1200×628',  w:1200, h:628},
+    {name:'Štvorcový',  sz:'1080×1080', w:1080, h:1080},
+    {name:'Story',      sz:'1080×1920', w:1080, h:1920},
+  ],
+  'Microsoft Ads':[
+    {name:'Rectangle',       sz:'300×250', w:300, h:250},
+    {name:'Leaderboard',     sz:'728×90',  w:728, h:90},
+    {name:'Wide Skyscraper', sz:'160×600', w:160, h:600},
+  ],
+  'TikTok Ads':[
+    {name:'Full Screen', sz:'1080×1920', w:1080, h:1920},
+    {name:'Štvorcový',   sz:'1080×1080', w:1080, h:1080},
+  ],
+};
+
+// ── State ──
+let tours = [], selIds = new Set(), selFmts = new Set();
+let generated = [], logoImg = null, curPlat = Object.keys(FORMATS)[0];
+const tourImgSel = new Map(); // tourId → vybraná URL obrázka
+let bannerStyle = 'dark'; // 'dark' | 'light-wave' | 'light-stamp'
+
+function setStyle(s, btn) {
+  bannerStyle = s;
+  document.querySelectorAll('.sty-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+// Dávkový výber – vloží zoznam názvov, automaticky vyberie zodpovedajúce
+function batchSelect() {
+  const raw = document.getElementById('batch-ta').value;
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return;
+  const notFound = [];
+  let found = 0;
+  for (const line of lines) {
+    // Odstrán dátumové reťazce (napr. "02.07.2026 - 05.07.2026" alebo "(02.07.2026 - 05.07.2026)")
+    const cleaned = stripDia(line
+      .replace(/\(?\d{2}\.\d{2}\.\d{4}\s*[-–]\s*\d{2}\.\d{2}\.\d{4}\)?/g,'')
+      .replace(/\s+/g,' ').trim());
+    const qWords = cleaned.split(/\s+/).filter(w => w.length > 2);
+    if (!qWords.length) continue;
+    let bestTour = null, bestScore = 0;
+    for (const t of tours) {
+      const tClean = stripDia(t.name);
+      const tWords = tClean.split(/\s+/).filter(w => w.length > 2);
+      let hits = 0;
+      for (const qw of qWords) {
+        if (tWords.some(tw => tw.includes(qw) || qw.includes(tw))) hits++;
+      }
+      const score = hits / Math.max(qWords.length, 1);
+      if (score > bestScore) { bestScore = score; bestTour = t; }
+    }
+    if (bestTour && bestScore >= 0.45) {
+      const wasNew = !selIds.has(bestTour.id);
+      if (wasNew) {
+        selIds.add(bestTour.id);
+        const el = document.querySelector(`.ti[data-id="${bestTour.id}"]`);
+        if (el) {
+          el.classList.add('sel');
+          const cb = el.querySelector('input'); if(cb) cb.checked=true;
+          // Pridaj thumbnail strip a spusti auto-výber
+          if (bestTour.imgs && bestTour.imgs.length > 1) {
+            let strip = document.getElementById('ti-imgs-' + bestTour.id);
+            if (!strip) {
+              const activeUrl = tourImgUrl(bestTour);
+              strip = document.createElement('div');
+              strip.className='ti-imgs'; strip.id='ti-imgs-'+bestTour.id;
+              strip.innerHTML = bestTour.imgs.map(url =>
+                `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${PROXY+encodeURIComponent(url)}"
+                 data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
+                 onclick="selectImg('${esc(bestTour.id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`
+              ).join('');
+              el.appendChild(strip);
+            }
+            triggerAutoSelect(bestTour.id);
+          }
+        }
+      }
+      found++;
+    } else {
+      notFound.push(line.replace(/\(?\d{2}\.\d{2}\.\d{4}.+/,'').trim().slice(0,35));
+    }
+  }
+  updCnt(); updBtn();
+  const res = document.getElementById('batch-res');
+  let msg = `✅ Nájdené: ${found} / ${lines.length}`;
+  if (notFound.length) msg += `\n⚠️ Nenájdené: ${notFound.slice(0,4).join(', ')}${notFound.length>4?` +${notFound.length-4} ďalší`:''}`;
+  res.textContent = msg;
+  res.style.whiteSpace = 'pre-line';
+}
+
+// ── Init ──
+async function init() {
+  buildFmtUI();
+  await Promise.all([loadLogo(), loadTours()]);
+}
+
+async function loadLogo() {
+  try { logoImg = await loadImg(PROXY + encodeURIComponent(LOGO_URL)); } catch {}
+  if (!logoImg) { try { logoImg = await loadImg(LOGO_URL); } catch {} }
+}
+
+async function loadTours() {
+  setSt('Načítavam zájazdy…', true);
+  try {
+    let text;
+    try {
+      const r = await fetch(PROXY + encodeURIComponent(XML_URL));
+      text = await r.text();
+    } catch {
+      const r = await fetch(XML_URL);
+      text = await r.text();
+    }
+    const xml = new DOMParser().parseFromString(text,'text/xml');
+    tours = parseXML(xml);
+    renderList(tours);
+    setSt(`${tours.length} zájazdov načítaných`, false);
+  } catch(e) {
+    setSt('Chyba načítania XML', false);
+    document.getElementById('tl').innerHTML = '<div class="empty"><h3>Chyba</h3><p>Nepodarilo sa načítať zájazdy. Skontrolujte pripojenie.</p></div>';
+  }
+}
+
+function parseXML(xml) {
+  return Array.from(xml.querySelectorAll('accommodation')).map(item => {
+    const code = item.getAttribute('code') || '';
+    const name = (item.getAttribute('name') || '').trim();
+    if (!code || !name) return null;
+
+    // Všetky obrázky – main="1" ide ako prvý
+    const imgEls = Array.from(item.querySelectorAll('image'));
+    const mainEl = imgEls.find(e => e.getAttribute('main') === '1');
+    const imgs = [
+      ...(mainEl ? [mainEl.getAttribute('url')] : []),
+      ...imgEls.filter(e => e !== mainEl).map(e => e.getAttribute('url'))
+    ].filter(Boolean);
+
+    // Cena – minimum z final_price naprieč dátumami
+    const prices = Array.from(item.querySelectorAll('final_price'))
+      .map(e => parseFloat(e.textContent))
+      .filter(p => !isNaN(p) && p > 0);
+
+    // Zľava – z <description name="Zľavy">
+    const discounts = Array.from(item.querySelectorAll('description'))
+      .filter(e => e.getAttribute('name') === 'Zľavy' || e.getAttribute('name') === 'Zlava' || e.getAttribute('name') === 'Zľavy')
+      .map(e => parseInt(e.textContent))
+      .filter(d => !isNaN(d) && d > 0);
+
+    // Destinácia – extrahuj z názvu (country/destination sú "Array")
+    const dm = name.match(/\bdo\s+([A-ZÁČĎÉÍĹĽŇÓÔŔŠŤÚÝŽÄ][\wáčďéíĺľňóôŕšťúýžÁČĎÉÍĹĽŇÓÔŔŠŤÚÝŽä\s,]+?)(?:\s+s\b|\s+na\b|\s+zo?\b|\s*$)/i)
+            || name.match(/\bna\s+([A-ZÁČĎÉÍĹĽŇÓÔŔŠŤÚÝŽÄ][\wáčďéíĺľňóôŕšťúýžÁČĎÉÍĹĽŇÓÔŔŠŤÚÝŽä\s,]+?)(?:\s+s\b|\s*$)/i);
+    // Ak sa nenašiel vzor "do/na X", skús extrahovať mesto pred pomlčkou ("Fethiye – Perla...")
+    const dm2 = !dm && name.match(/^([A-ZÁČĎÉÍĹĽŇÓÔŔŠŤÚÝŽÄ][^\d–\-\n]{1,28}?)\s*[–\-]/);
+    const dest = dm ? dm[1].trim() : (dm2 ? dm2[1].trim() : '');
+
+    // Dátumy a počet dní
+    const dateEls = Array.from(item.querySelectorAll('date'));
+    const dateFroms = dateEls.map(e=>e.getAttribute('date_from')).filter(Boolean).sort();
+    const firstDateEl = dateEls.find(e=>e.getAttribute('date_from')===dateFroms[0]);
+    const dateFrom = dateFroms[0] || null;
+    const dateTo = firstDateEl ? firstDateEl.getAttribute('date_to') : null;
+    const nightsEl = firstDateEl ? firstDateEl.querySelector('nights') : null;
+    const nights = nightsEl ? parseInt(nightsEl.textContent)||0 : 0;
+    const days = dateTo && dateFrom
+      ? Math.round((new Date(dateTo)-new Date(dateFrom))/86400000)+1
+      : (nights>0 ? nights+1 : 0);
+
+    // Kategória (1. trip)
+    const catEl = item.querySelector('category');
+    const category = catEl ? catEl.textContent.trim() : '';
+
+    return {
+      id: code, name, dest, category,
+      imgUrl: imgs[0] || '',
+      imgs,
+      minPrice: prices.length ? Math.min(...prices) : null,
+      maxDiscount: discounts.length ? Math.max(...discounts) : 0,
+      nearestDate: dateFrom,
+      dateFrom, dateTo, days,
+    };
+  }).filter(Boolean).filter(t => t.id && t.name);
+}
+
+// ── Tour List UI ──
+function tourImgUrl(t) {
+  return tourImgSel.get(t.id) || t.imgUrl || '';
+}
+
+function renderList(list) {
+  const el = document.getElementById('tl');
+  if (!list.length) { el.innerHTML = '<div class="empty"><p>Žiadne zájazdy</p></div>'; return; }
+  el.innerHTML = list.map(t => {
+    const sel = selIds.has(t.id);
+    const activeUrl = tourImgUrl(t);
+    const thumbsHtml = (sel && t.imgs && t.imgs.length > 1)
+      ? `<div class="ti-imgs" id="ti-imgs-${esc(t.id)}">` +
+        t.imgs.map(url => `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${PROXY+encodeURIComponent(url)}"
+          data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
+          onclick="selectImg('${esc(t.id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`).join('') +
+        `</div>`
+      : '';
+    return `<div class="ti${sel?' sel':''}" data-id="${esc(t.id)}">
+      <div class="ti-row" onclick="toggleTour('${esc(t.id)}',event)">
+        <input type="checkbox" ${sel?'checked':''} onclick="toggleTour('${esc(t.id)}',event)">
+        <img class="ti-main-img" src="${activeUrl?PROXY+encodeURIComponent(activeUrl):''}" alt="" onerror="this.style.opacity=.2">
+        <div class="ti-info">
+          <div class="ti-name">${esc(t.name)}</div>
+          <div class="ti-meta">
+            <span>${esc(t.dest)}</span>
+            ${t.minPrice?`<span class="ti-p">od ${Math.round(t.minPrice)} €</span>`:''}
+            ${t.imgs&&t.imgs.length>1?`<span style="opacity:.5;font-size:10px">📷 ${t.imgs.length}</span>`:''}
+          </div>
+        </div>
+      </div>
+      ${thumbsHtml}
+    </div>`;
+  }).join('');
+}
+
+function selectImg(tourId, url, e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  tourImgSel.set(tourId, url);
+  const mainImg = document.querySelector(`.ti[data-id="${tourId}"] .ti-main-img`);
+  if (mainImg) mainImg.src = PROXY + encodeURIComponent(url);
+  const strip = document.getElementById('ti-imgs-' + tourId);
+  if (strip) strip.querySelectorAll('.ti-thumb').forEach(img =>
+    img.classList.toggle('sel', img.dataset.url === url));
+}
+
+// ── Automatický výber najlepšieho obrázka ──
+// Skóre obrázka: prirodzené fotky (vyšší rozptyl, saturácia, menej bielej) > promo obrázky (biele pozadie, ikonky)
+const _ac = document.createElement('canvas'); _ac.width = _ac.height = 64;
+const _ax = _ac.getContext('2d', {willReadFrequently: true});
+
+async function scoreImg(url) {
+  let img;
+  try { img = await loadImg(PROXY + encodeURIComponent(url)); } catch { return -1; }
+  _ax.clearRect(0, 0, 64, 64);
+  imgCover(_ax, img, 0, 0, 64, 64, 0.5);
+  const {data} = _ax.getImageData(0, 0, 64, 64);
+  const n = 64*64;
+
+  // Priemer kanálov
+  let rS=0,gS=0,bS=0;
+  for (let i=0;i<data.length;i+=4){rS+=data[i];gS+=data[i+1];bS+=data[i+2];}
+  const rM=rS/n, gM=gS/n, bM=bS/n;
+
+  // Rozptyl, biela plocha, tmavá plocha, saturácia
+  let varS=0, whiteN=0, darkN=0, satS=0, grayN=0;
+  for (let i=0;i<data.length;i+=4){
+    const r=data[i],g=data[i+1],b=data[i+2];
+    varS += (r-rM)**2 + (g-gM)**2 + (b-bM)**2;
+    if (r>230 && g>230 && b>230) whiteN++;         // blízko bielej = promo pozadie
+    if (r<25  && g<25  && b<25)  darkN++;           // čisto čierna = overlay/text
+    const mx=Math.max(r,g,b)/255, mn=Math.min(r,g,b)/255;
+    satS += mx>0.08 ? (mx-mn)/mx : 0;
+    // Šedé pixely (nízka saturácia) – veľa šedej = UI/ikony
+    if (mx>0 && (mx-mn)/mx < 0.12) grayN++;
+  }
+  const variance  = varS/(n*3);
+  const whiteFrac = whiteN/n;
+  const darkFrac  = darkN/n;
+  const satAvg    = satS/n;
+  const grayFrac  = grayN/n;
+
+  // Hlavné skóre: bohatá fotka = vysoký rozptyl + saturácia
+  let score = Math.sqrt(variance) * (0.35 + satAvg * 1.4);
+
+  // Penalizácia za veľké biele/svetlé plochy (promo/ikona pozadie, feature-list)
+  score *= Math.max(0.02, 1 - whiteFrac * 4.0);
+  // Penalizácia za veľmi tmavé plochy (textový overlay)
+  score *= Math.max(0.2,  1 - darkFrac  * 1.8);
+  // Penalizácia za šedú/nízko-saturovanú dominanciu (UI, ikony, infografiky)
+  score *= Math.max(0.2,  1 - grayFrac  * 1.6);
+
+  // Kombinácia svetlé pozadie + nízka saturácia = feature-list/ikona stránka (bus/posteľ/vidlička)
+  if (whiteFrac > 0.35 && satAvg < 0.18) score *= 0.15; // drastická penalizácia
+  if (whiteFrac > 0.25 && grayFrac > 0.45) score *= 0.25; // sivé ikony na bielom
+
+  // Bonus pre stock-foto vzory v názve súboru
+  const fn = url.split('/').pop().toLowerCase();
+  if (/\d{5,}/.test(fn))                                           score *= 1.18; // dlhé číslo = stock
+  if (/depositphotos|shutterstock|pixabay|unsplash|adobe/.test(fn)) score *= 1.25;
+  // Bonus: typické mená cestovných fotografií
+  if (/foto|photo|image|view|beach|hotel|resort|coast|sea|lake|mount/.test(fn)) score *= 1.10;
+  // Penalizácia: slug zodpovedajúci názvu zájazdu alebo feature obrázky
+  if (/^[a-z0-9]+(-[a-z0-9]+){4,}\.jpg$/i.test(fn))              score *= 0.78;
+  if (/icon|feature|service|amenity|includ|ponuka|ikona|sluzb/.test(fn)) score *= 0.30;
+
+  return Math.max(0, score);
+}
+
+// Kategória formátu podľa pomeru strán
+function imgCategory(w, h) {
+  const r = w / h;
+  if (r >= 3)    return 'strip';     // pásiky (728×90, 320×50)
+  if (r >= 1.25) return 'landscape'; // horizontál, square
+  return 'portrait';                  // story, skyscraper, portrait
+}
+
+// Vyberie najlepší obrázok PER kategória – skóruje obrázky raz, ale hodnotí aspect-ratio bonus
+async function autoSelectBestImgAllAspects(tour) {
+  const fallback = tour.imgUrl || tour.imgs?.[0] || null;
+  const same = { portrait: fallback, landscape: fallback, strip: fallback };
+  if (!tour.imgs || tour.imgs.length <= 1) return same;
+  const limit = Math.min(tour.imgs.length, 12);
+  const results = [];
+  for (let i = 0; i < limit; i++) {
+    const url = tour.imgs[i];
+    const score = await scoreImg(url);
+    // Zisti pomer strán obrázka (browser cache – žiaden extra sieťový request)
+    let ratio = 1.5;
+    try {
+      const img = await loadImg(PROXY + encodeURIComponent(url));
+      ratio = (img.naturalWidth || img.width) / (img.naturalHeight || img.height || 1);
+    } catch {}
+    results.push({ url, score, ratio });
+  }
+  const valid = results.filter(r => r.score >= 0);
+  if (!valid.length) return same;
+
+  function best(cat) {
+    return valid.reduce((acc, r) => {
+      let s = r.score;
+      if (cat === 'portrait') {
+        // Pre story/skyscraper: portrait foto (r<1) dostane bonus, veľmi široké penalizácia
+        s *= r.ratio < 1.0 ? 1.5 : r.ratio < 1.6 ? 1.05 : 0.80;
+      } else if (cat === 'strip') {
+        // Pre pásiky: wide landscape foto
+        s *= r.ratio >= 2.5 ? 1.2 : r.ratio >= 1.5 ? 1.1 : 1.0;
+      }
+      // landscape: žiadny extra bonus – základné skóre rozhoduje
+      return (!acc || s > acc.s) ? { url: r.url, s } : acc;
+    }, null)?.url || valid[0].url;
+  }
+  return { portrait: best('portrait'), landscape: best('landscape'), strip: best('strip') };
+}
+
+// Spätná kompatibilita (používa sa v triggerAutoSelect)
+async function autoSelectBestImg(tour) {
+  const res = await autoSelectBestImgAllAspects(tour);
+  return res.landscape; // pre UI náhľad vráť landscape verziu
+}
+
+// Spustí auto-výber pre jeden zájazd a aktualizuje UI
+function triggerAutoSelect(tourId) {
+  const tour = tours.find(t => t.id === tourId);
+  if (!tour || !tour.imgs || tour.imgs.length <= 1) return;
+  // Ukaž indikátor "analyzujem"
+  const strip = document.getElementById('ti-imgs-' + tourId);
+  if (strip) {
+    let ind = strip.querySelector('.ti-analyzing');
+    if (!ind) { ind=document.createElement('span'); ind.className='ti-analyzing'; strip.appendChild(ind); }
+    ind.textContent = '🔍 analyzujem…';
+  }
+  autoSelectBestImg(tour).then(bestUrl => {
+    if (!bestUrl || !selIds.has(tourId)) return;
+    tourImgSel.set(tourId, bestUrl);
+    // Aktualizuj hlavný náhľad
+    const mainImg = document.querySelector(`.ti[data-id="${tourId}"] .ti-main-img`);
+    if (mainImg) mainImg.src = PROXY + encodeURIComponent(bestUrl);
+    // Aktualizuj thumby + označ auto-vybraný
+    const s2 = document.getElementById('ti-imgs-' + tourId);
+    if (s2) {
+      s2.querySelectorAll('.ti-thumb').forEach(img => {
+        img.classList.toggle('sel', img.dataset.url === bestUrl);
+        img.classList.toggle('best-auto', img.dataset.url === bestUrl);
+        img.title = img.dataset.url === bestUrl
+          ? '✅ Auto-vybraný ako najlepší' : (img.getAttribute('data-url')||'').split('/').pop();
+      });
+      const ind2 = s2.querySelector('.ti-analyzing');
+      if (ind2) ind2.remove();
+    }
+  });
+}
+
+// Odstráni diakritiku: "paríž" → "pariz", "česká" → "ceska"
+function stripDia(s) {
+  return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+}
+function filterTours() {
+  const q = stripDia(document.getElementById('q').value);
+  renderList(q ? tours.filter(t => stripDia(t.name).includes(q) || stripDia(t.dest).includes(q)) : tours);
+}
+
+function toggleTour(id, e) {
+  e.stopPropagation();
+  const nowSel = !selIds.has(id);
+  if (nowSel) selIds.add(id); else { selIds.delete(id); tourImgSel.delete(id); }
+  const el = document.querySelector(`.ti[data-id="${id}"]`);
+  if (el) {
+    el.classList.toggle('sel', nowSel);
+    const cb = el.querySelector('input'); if(cb) cb.checked = nowSel;
+    // Zobraz/skry thumbnaily
+    const tour = tours.find(t => t.id === id);
+    if (tour && tour.imgs && tour.imgs.length > 1) {
+      let strip = document.getElementById('ti-imgs-' + id);
+      if (nowSel && !strip) {
+        // Vlož thumbnail strip za ti-row
+        const activeUrl = tourImgUrl(tour);
+        strip = document.createElement('div');
+        strip.className = 'ti-imgs'; strip.id = 'ti-imgs-' + id;
+        strip.innerHTML = tour.imgs.map(url =>
+          `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${PROXY+encodeURIComponent(url)}"
+           data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
+           onclick="selectImg('${esc(id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`
+        ).join('');
+        el.appendChild(strip);
+        // Spustí automatický výber najlepšieho obrázka
+        triggerAutoSelect(id);
+      } else if (!nowSel && strip) {
+        strip.remove();
+      }
+    }
+  }
+  updCnt(); updBtn();
+}
+
+function selAll() {
+  document.querySelectorAll('.ti').forEach(el => {
+    const id = el.dataset.id; selIds.add(id); el.classList.add('sel');
+    const cb = el.querySelector('input'); if(cb) cb.checked = true;
+  }); updCnt(); updBtn();
+}
+function selNone() {
+  selIds.clear(); tourImgSel.clear();
+  document.querySelectorAll('.ti').forEach(el => {
+    el.classList.remove('sel');
+    const cb = el.querySelector('input'); if(cb) cb.checked = false;
+    const strip = el.querySelector('.ti-imgs'); if(strip) strip.remove();
+  });
+  updCnt(); updBtn();
+}
+function updCnt() { document.getElementById('cnt').textContent = `${selIds.size} vybraných`; }
+
+// Vymaže výber zájazdov, formátov aj vygenerované náhľady
+function clearAll() {
+  // Zájazdy
+  selIds.clear(); tourImgSel.clear();
+  document.querySelectorAll('.ti').forEach(el => {
+    el.classList.remove('sel');
+    const cb = el.querySelector('input'); if(cb) cb.checked = false;
+    const strip = el.querySelector('.ti-imgs'); if(strip) strip.remove();
+  });
+  // Formáty
+  selFmts.clear(); renderFmts();
+  // Vygenerované bannery
+  generated = [];
+  document.getElementById('pgrid').innerHTML =
+    '<div class="empty"><h3>Žiadne bannery</h3><p>Vyberte zájazdy a formáty, potom kliknite na Generovať bannery</p></div>';
+  document.getElementById('btn-zip').disabled = true;
+  // Reset stavu hľadania
+  document.getElementById('q').value = '';
+  renderList(tours);
+  updCnt(); updBtn();
+}
+
+// ── Format UI ──
+function buildFmtUI() {
+  const tabs = document.getElementById('ptabs');
+  tabs.innerHTML = Object.keys(FORMATS).map(p =>
+    `<button class="ptab${p===curPlat?' on':''}" onclick="switchPlat('${p.replace(/'/g,"\\'")}',this)">${PLAT_ICONS[p]||''}${p}</button>`
+  ).join('');
+  renderFmts();
+}
+
+function switchPlat(p, el) {
+  curPlat = p;
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  renderFmts();
+}
+
+function renderFmts() {
+  const fmts = FORMATS[curPlat];
+  document.getElementById('fgrid').innerHTML = fmts.map(f => {
+    const key = `${curPlat}||${f.w}x${f.h}`;
+    const r = f.w / f.h;
+    const bw = Math.round(Math.min(26, Math.max(8, r * 14)));
+    const bh = Math.round(Math.min(26, Math.max(8, 14 / r)));
+    return `<label class="fi${selFmts.has(key)?' on':''}">
+      <input type="checkbox" ${selFmts.has(key)?'checked':''} onchange="toggleFmt('${key}',this)">
+      <div class="fi-box"><div class="fi-mini" style="width:${bw}px;height:${bh}px"></div></div>
+      <div class="fi-label"><div class="fi-name">${f.name}</div><div class="fi-sz">${f.sz} px</div></div>
+    </label>`;
+  }).join('');
+}
+
+function toggleFmt(key, cb) {
+  if (cb.checked) selFmts.add(key); else selFmts.delete(key);
+  cb.closest('.fi').classList.toggle('on', cb.checked);
+  updBtn();
+}
+
+function selAllFmts() {
+  FORMATS[curPlat].forEach(f => selFmts.add(`${curPlat}||${f.w}x${f.h}`));
+  renderFmts(); updBtn();
+}
+function selNoFmts() {
+  FORMATS[curPlat].forEach(f => selFmts.delete(`${curPlat}||${f.w}x${f.h}`));
+  renderFmts(); updBtn();
+}
+function selAllFmtsAll() {
+  Object.entries(FORMATS).forEach(([plat, fmts]) =>
+    fmts.forEach(f => selFmts.add(`${plat}||${f.w}x${f.h}`))
+  );
+  renderFmts(); updBtn();
+}
+function selNoFmtsAll() {
+  selFmts.clear();
+  renderFmts(); updBtn();
+}
+
+function updBtn() {
+  const ok = selIds.size > 0 && selFmts.size > 0;
+  document.getElementById('btn-gen').disabled = !ok;
+  const total = selIds.size * selFmts.size;
+  // Zisti koľko platforiem je pokrytých
+  const platsCovered = new Set([...selFmts].map(k => k.split('||')[0])).size;
+  document.getElementById('hint').textContent = ok
+    ? `${selIds.size} zájazdov × ${selFmts.size} formátov (${platsCovered} platformy) = ${total} bannerov`
+    : 'Vyberte aspoň 1 zájazd a 1 formát';
+}
+
+// ── Banner Generation ──
+async function generate() {
+  const tourList = tours.filter(t => selIds.has(t.id));
+  const fmtList = [];
+  for (const key of selFmts) {
+    const [plat, wh] = key.split('||');
+    const [w, h] = wh.split('x').map(Number);
+    const f = FORMATS[plat]?.find(x => x.w===w && x.h===h);
+    if (f) fmtList.push({...f, plat, key});
+  }
+  const total = tourList.length * fmtList.length;
+  generated = [];
+  const btn = document.getElementById('btn-gen');
+  btn.disabled = true; btn.textContent = '⏳ Generujem…';
+  document.getElementById('btn-zip').disabled = true;
+  const pbw = document.getElementById('pbw'); pbw.style.display = 'block';
+  const pb = document.getElementById('pb'); pb.style.width = '0%';
+  document.getElementById('pgrid').innerHTML = '';
+  await document.fonts.ready;
+  let done = 0;
+  for (const tour of tourList) {
+    // ── Auto-výber obrázka prispôsobeného formátu (portrait vs landscape vs strip) ──
+    let aspectImgs;
+    if (tourImgSel.has(tour.id)) {
+      // Ručne vybraný obrázok – použiť pre všetky formáty
+      const url = tourImgSel.get(tour.id);
+      aspectImgs = { portrait: url, landscape: url, strip: url };
+    } else if (tour.imgs && tour.imgs.length > 1) {
+      btn.textContent = `🔍 ${tour.name.slice(0,26)}…`;
+      pb.style.width = `${done/total*100}%`;
+      await new Promise(r => setTimeout(r, 0));
+      aspectImgs = await autoSelectBestImgAllAspects(tour);
+      btn.textContent = '⏳ Generujem…';
+    } else {
+      const url = tour.imgUrl || tour.imgs?.[0] || '';
+      aspectImgs = { portrait: url, landscape: url, strip: url };
+    }
+
+    // Cache obrázkov (rovnaký URL sa načíta len raz)
+    const imgCache = new Map();
+    async function getTImg(url) {
+      if (!url) return null;
+      if (imgCache.has(url)) return imgCache.get(url);
+      let img = null;
+      try { img = await loadImg(PROXY + encodeURIComponent(url)); } catch {}
+      imgCache.set(url, img);
+      return img;
+    }
+
+    for (const fmt of fmtList) {
+      const cat    = imgCategory(fmt.w, fmt.h);
+      const imgUrl = aspectImgs[cat] || tour.imgUrl || '';
+      const tImg   = await getTImg(imgUrl);
+      const canvas = document.createElement('canvas');
+      canvas.width = fmt.w; canvas.height = fmt.h;
+      drawBanner(canvas.getContext('2d'), fmt.w, fmt.h, tour, tImg, logoImg);
+      const fname = `DAKA_${tour.productNo||tour.id}_${fmt.plat.replace(/[^a-z0-9]/gi,'_')}_${fmt.w}x${fmt.h}.png`;
+      generated.push({canvas, fname});
+      addCard(canvas, fname, tour, fmt);
+      done++;
+      pb.style.width = `${done/total*100}%`;
+      await new Promise(r => setTimeout(r, 0)); // yield
+    }
+  }
+  btn.disabled = false; btn.textContent = '⚡ Generovať bannery';
+  document.getElementById('btn-zip').disabled = false;
+  setTimeout(() => { pbw.style.display = 'none'; }, 1200);
+}
+
+// ── Export format helper ──
+function getExpFmt() {
+  const v = (document.getElementById('exp-fmt')||{}).value || 'webp-ll';
+  if (v === 'png')      return {mime:'image/png',   q:undefined, ext:'png'};
+  if (v === 'jpeg-95')  return {mime:'image/jpeg',  q:0.95,      ext:'jpg'};
+  if (v === 'jpeg-90')  return {mime:'image/jpeg',  q:0.90,      ext:'jpg'};
+  // webp: lossy WebP quality 0.92 – dobrý kompromis veľkosť vs. kvalita
+  return {mime:'image/webp', q:0.92, ext:'webp'};
+}
+function canvasBlob(canvas, ef) {
+  return new Promise(r => canvas.toBlob(b => {
+    // Fallback: ak prehliadač nepodporuje WebP, skúsime PNG
+    if (!b && ef.mime !== 'image/png') { canvas.toBlob(r, 'image/png'); return; }
+    r(b);
+  }, ef.mime, ef.q));
+}
+function fnameFmt(base, ef) {
+  // nahradí príponu .png za správnu
+  return base.replace(/\.png$/i, '.' + ef.ext);
+}
+
+function addCard(canvas, fname, tour, fmt) {
+  const card = document.createElement('div');
+  card.className = 'pc';
+  const ef = getExpFmt();
+  const dlLabel = ef.ext.toUpperCase();
+  card.innerHTML = `
+    <div class="pc-hd"><span>${fmt.plat} – ${fmt.name}</span><span style="opacity:.6">${fmt.sz}</span></div>
+    <div class="pc-img"></div>
+    <div class="pc-ft"><span>${esc(tour.name.slice(0,40))}${tour.name.length>40?'…':''}</span>
+      <button class="dl" data-fname="${esc(fnameFmt(fname,ef))}">⬇ ${dlLabel}</button></div>`;
+  // Preview: vždy PNG (ostrý, bez kompresných artefaktov WebP/JPEG)
+  const previewUrl = canvas.toDataURL('image/png');
+  const imgEl = Object.assign(document.createElement('img'), {src: previewUrl, title:'Kliknite pre väčší náhľad'});
+  imgEl.addEventListener('click', () => openModal(previewUrl, fname, fmt.w, fmt.h));
+  card.querySelector('.pc-img').appendChild(imgEl);
+  // Download: zvolený formát
+  canvasBlob(canvas, ef).then(blob => {
+    const dlUrl = URL.createObjectURL(blob);
+    card.querySelector('.dl').addEventListener('click', () => {
+      Object.assign(document.createElement('a'), {href:dlUrl, download:fnameFmt(fname,ef)}).click();
+    });
+  });
+  document.getElementById('pgrid').appendChild(card);
+}
+
+async function downloadZip() {
+  if (!generated.length) return;
+  const btn = document.getElementById('btn-zip');
+  const ef = getExpFmt();
+  btn.disabled = true; btn.textContent = '⏳ Pripravujem ZIP…';
+  const zip = new JSZip().folder('CK_DAKA_Bannery');
+  let done = 0;
+  for (const {canvas, fname} of generated) {
+    const blob = await canvasBlob(canvas, ef);
+    zip.file(fnameFmt(fname, ef), blob);
+    done++;
+    btn.textContent = `⏳ ${done}/${generated.length}…`;
+  }
+  const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+  const url = URL.createObjectURL(blob);
+  const now = new Date();
+  const d = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  Object.assign(document.createElement('a'),{href:url, download:`CK_DAKA_Bannery_${d}.zip`}).click();
+  URL.revokeObjectURL(url);
+  btn.disabled = false; btn.textContent = '⬇ Stiahnuť ZIP';
+}
+
+// ── Canvas Drawing ──
+function layout(w, h) {
+  const r = w / h;
+  if (r >= 6)   return 'strip';
+  if (r >= 3)   return 'horizontal';
+  if (r >= 1.4) return 'landscape';
+  if (h >= 1500) return 'story';
+  if (r < 0.6)  return 'skyscraper';
+  return 'square';
+}
+
+function drawBanner(ctx, w, h, tour, tImg, lImg) {
+  ctx.clearRect(0,0,w,h);
+  if (bannerStyle === 'light-wave')  { drawLight(ctx,w,h,tour,tImg,lImg,'wave');  return; }
+  if (bannerStyle === 'light-stamp') { drawLight(ctx,w,h,tour,tImg,lImg,'stamp'); return; }
+  if (bannerStyle === 'light')       { drawLight(ctx,w,h,tour,tImg,lImg,'wave');  return; } // backward compat
+  const t = layout(w,h);
+  if (t==='strip')      drawStrip(ctx,w,h,tour,tImg,lImg);
+  else if (t==='horizontal') drawHorizontal(ctx,w,h,tour,tImg,lImg);
+  else if (t==='landscape')  drawLandscape(ctx,w,h,tour,tImg,lImg);
+  else if (t==='story')      drawStory(ctx,w,h,tour,tImg,lImg);
+  else if (t==='skyscraper') drawSkyscraper(ctx,w,h,tour,tImg,lImg);
+  else                       drawSquare(ctx,w,h,tour,tImg,lImg);
+}
+
+// yFocus 0=top 0.5=center 1=bottom  – pre cestovné fotky 0.55 ukazuje viac krajiny, menej oblohy
+function imgCover(ctx, img, x, y, w, h, yFocus=0.5) {
+  if (!img) return;
+  const ir = img.width/img.height, dr = w/h;
+  let sx,sy,sw,sh;
+  if (ir>dr){ sh=img.height; sw=sh*dr; sx=(img.width-sw)*0.5; sy=0; }
+  else { sw=img.width; sh=sw/dr; sx=0; sy=(img.height-sh)*Math.max(0,Math.min(1,yFocus)); }
+  ctx.drawImage(img,sx,sy,sw,sh,x,y,w,h);
+}
+
+function grad(ctx,x,y,w,h,dir,c0,c1){
+  let g;
+  if(dir==='b') g=ctx.createLinearGradient(x,y,x,y+h);
+  else if(dir==='t') g=ctx.createLinearGradient(x,y+h,x,y);
+  else if(dir==='r') g=ctx.createLinearGradient(x,y,x+w,y);
+  else g=ctx.createLinearGradient(x+w,y,x,y);
+  g.addColorStop(0,c0); g.addColorStop(1,c1);
+  ctx.fillStyle=g; ctx.fillRect(x,y,w,h);
+}
+
+function rr(ctx,x,y,w,h,r,color){
+  ctx.fillStyle=color; ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fill();
+}
+
+function wrap(ctx,text,x,y,maxW,lh,maxL){
+  const words=text.split(' '); let line=''; const lines=[];
+  for(const word of words){
+    const test=line?line+' '+word:word;
+    if(ctx.measureText(test).width>maxW&&line){
+      lines.push(line); if(lines.length>=maxL){lines[maxL-1]+='…';break;} line=word;
+    } else line=test;
+  }
+  if(line&&lines.length<maxL) lines.push(line);
+  lines.forEach((l,i)=>ctx.fillText(l,x,y+i*lh));
+  return lines.length*lh;
+}
+
+// Nájdi najväčší font (maxFs→minFs) kde sa text zmestí do maxLines riadkov so šírkou maxW
+function autoFit(ctx, text, maxW, maxLines, minFs, maxFs, weight='bold') {
+  for (let fs = maxFs; fs >= minFs; fs--) {
+    ctx.font = `${weight} ${fs}px Ubuntu,Arial`;
+    const words = text.split(' '); let lines = 0, line = '';
+    for (const wd of words) {
+      const t2 = line ? line+' '+wd : wd;
+      if (ctx.measureText(t2).width > maxW && line) { lines++; if(lines>=maxLines) break; line=wd; }
+      else line = t2;
+    }
+    if (line) lines++;
+    if (lines <= maxLines) return fs;
+  }
+  return minFs;
+}
+
+// Zmestí text do jedného riadka (zmenší font alebo skráti text)
+function fitLine(ctx, text, maxW, minFs, maxFs, weight='500') {
+  let fs = maxFs;
+  for (; fs >= minFs; fs--) {
+    ctx.font = `${weight} ${fs}px Ubuntu,Arial`;
+    if (ctx.measureText(text).width <= maxW) return {fs, t: text};
+  }
+  // Stále sa nezmestí → skrátim na celé slová
+  ctx.font = `${weight} ${minFs}px Ubuntu,Arial`;
+  let t = text;
+  while (t.includes(' ') && ctx.measureText(t+'…').width > maxW) t = t.slice(0, t.lastIndexOf(' '));
+  if (t !== text) t += '…';
+  return {fs: minFs, t};
+}
+
+// Skráti text na maxW so '…' ak sa nezmestí (pre jednoradové nadpisy)
+function ellipsis(ctx, text, maxW) {
+  if (!text) return '';
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+  return t + '…';
+}
+
+// Text shadow ON/OFF pre text na fotografii
+function ts(ctx){ ctx.shadowColor='rgba(0,0,0,.72)'; ctx.shadowBlur=5; ctx.shadowOffsetX=0; ctx.shadowOffsetY=1; }
+function tc(ctx){ ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0; }
+
+// ── Logo: biela pill + logo v originálnych farbách ── vracia skutočnú šírku
+function drawLogo(ctx, lImg, x, y, maxW, maxH) {
+  const vpad = Math.round(maxH * 0.15), hpad = Math.round(maxH * 0.28);
+  if (!lImg) {
+    const fs = Math.max(7, Math.min(maxH * 0.58, 20));
+    ctx.font = `bold ${fs}px Ubuntu,Arial`;
+    const tw = ctx.measureText('CK DAKA').width;
+    const bw = Math.min(tw + hpad*2, maxW);
+    tc(ctx);
+    rr(ctx, x, y, bw, maxH, maxH*0.22, C.white);
+    ctx.fillStyle = C.primary; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    ctx.fillText('CK DAKA', x + hpad, y + maxH/2);
+    return bw;
+  }
+  const ratio = lImg.width / lImg.height;
+  const innerH = maxH - vpad * 2;
+  let lw = Math.min(maxW - hpad * 2, ratio * innerH);
+  if (lw < 1) lw = 1;
+  let lh = lw / ratio;
+  if (lh > innerH) { lh = innerH; lw = lh * ratio; }
+  const totalW = Math.min(Math.ceil(lw + hpad * 2), maxW);
+  tc(ctx);
+  rr(ctx, x, y, totalW, Math.ceil(lh + vpad * 2), Math.ceil((lh + vpad * 2) * 0.2), C.white);
+  ctx.drawImage(lImg, x + hpad, y + vpad, lw, lh);
+  return totalW;
+}
+
+// ── Templates ── (prísne sekcie, žiadne prekrývanie)
+
+// STRIP: 728×90, 320×50, 468×60  – pásik
+function drawStrip(ctx,w,h,tour,tImg,lImg){
+  ctx.fillStyle=C.primary; ctx.fillRect(0,0,w,h);
+  const p=Math.max(3,Math.round(h*.1));
+  // Fotka: pravá 30% s plynulým prechodom
+  const imgW=Math.round(w*.30);
+  if(tImg){
+    ctx.save(); ctx.beginPath(); ctx.rect(w-imgW,0,imgW,h); ctx.clip();
+    imgCover(ctx,tImg,w-imgW,0,imgW,h,0.5);
+    grad(ctx,w-imgW*1.2,0,imgW*1.2,h,'l','rgba(31,49,95,0)',C.primary);
+    ctx.restore();
+  }
+  const availW = w - imgW - p*2;
+  // Logo: vľavo, výška = 64% pruhu
+  const logoH = Math.round(h*.64);
+  const logoMaxW = Math.round(availW*.30);
+  const actualLogoW = drawLogo(ctx,lImg,p,Math.round((h-logoH)/2),logoMaxW,logoH);
+  const textX = p + actualLogoW + Math.max(4, Math.round(p*.9));
+  // Cena (badge) vpravo pred fotkou – proporcionálna veľkosť
+  let priceRight = w - imgW - p;
+  if(tour.minPrice){
+    const pfs = Math.max(7, Math.round(h*.30));
+    ctx.font = `bold ${pfs}px Ubuntu,Arial`;
+    const ps = `od ${Math.round(tour.minPrice)} €`;
+    const pw = ctx.measureText(ps).width;
+    const bpad = Math.round(p*.65);
+    const bh = Math.round(h*.60), by = Math.round((h-bh)/2);
+    const bx = priceRight - pw - bpad*2;
+    if(bx > textX+16){
+      rr(ctx, bx-bpad, by, pw+bpad*2, bh, 4, C.green);
+      ctx.fillStyle=C.white; ctx.textBaseline='middle'; ctx.fillText(ps, bx, h/2);
+      priceRight = bx - bpad - p;
+    }
+  }
+  // Názov: AUTO-FIT – čo najväčší font, ktorý sa zmestí do dostupnej šírky
+  const maxTxtW = priceRight - textX - p;
+  if(maxTxtW > 20){
+    const maxFs = Math.round(h*.38);
+    const minFs = Math.max(7, Math.round(h*.14));
+    const {fs, t} = fitLine(ctx, tour.name, maxTxtW, minFs, maxFs, '500');
+    ctx.font = `500 ${fs}px Ubuntu,Arial`; ctx.fillStyle=C.white; ctx.textBaseline='middle';
+    ctx.fillText(t, textX, h/2);
+  }
+}
+
+// HORIZONTAL: 970×250  – wide landscape
+// Stratégia: rezervuj spodných 28% pre cenu, zvyšok pre logo+dest+názov
+function drawHorizontal(ctx,w,h,tour,tImg,lImg){
+  if(tImg){imgCover(ctx,tImg,0,0,w,h);grad(ctx,0,0,w*.55,h,'r',C.primary,'rgba(31,49,95,0)');}
+  else{ctx.fillStyle=C.primary;ctx.fillRect(0,0,w,h);}
+  const p=Math.round(h*.09);
+  const textW=Math.round(w*.46);
+  // ── Spodná zóna (rezervovaná): cena + web ──
+  const priceZoneH = Math.round(h*.28);
+  const priceZoneTop = h - priceZoneH;
+  if(tour.minPrice){
+    const cfs=Math.round(h*.19);
+    ctx.font=`bold ${cfs}px Ubuntu,Arial`; ctx.fillStyle=C.green;
+    ctx.textBaseline='bottom'; ts(ctx);
+    ctx.fillText(`od ${Math.round(tour.minPrice)} €`,p,h-p*.4); tc(ctx);
+  }
+  if(tour.maxDiscount>0){
+    const zfs=Math.round(h*.09);
+    ctx.font=`${zfs}px Ubuntu,Arial`; ctx.fillStyle=C.greenLight; ctx.textBaseline='bottom'; ts(ctx);
+    ctx.fillText(`Zľava ${tour.maxDiscount}%`,p,priceZoneTop+Math.round(zfs*.2)); tc(ctx);
+  }
+  // Web
+  ctx.font=`${Math.round(h*.073)}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.35)';
+  ctx.textAlign='right'; ctx.textBaseline='bottom'; ctx.fillText('ckdaka.sk',w-p,h-p*.3);
+  ctx.textAlign='left';
+  // ── Horná zóna: logo + dest + názov ──
+  const topZoneBot = priceZoneTop - p;
+  // Logo
+  const logoH=Math.round(h*.18);
+  drawLogo(ctx,lImg,p,p,Math.round(h*.8),logoH);
+  let ty=p+logoH+Math.round(p*.55);
+  // Destinácia
+  const destFs=Math.round(h*.11);
+  if(ty+destFs < topZoneBot){
+    ctx.font=`300 ${destFs}px Ubuntu,Arial`; ctx.fillStyle=C.white;
+    ctx.textBaseline='top'; ctx.globalAlpha=.72; ts(ctx);
+    ctx.fillText(ellipsis(ctx,tour.dest.toUpperCase(),textW-p*2),p,ty); tc(ctx); ctx.globalAlpha=1;
+    ty+=Math.round(destFs*1.28);
+  }
+  // Názov – AUTO-FIT max 2 riadky do zostávajúceho priestoru
+  const maxNameH = topZoneBot - ty - p;
+  if(maxNameH > 12){
+    const maxNameFs=Math.round(h*.165);
+    const minNameFs=Math.max(9, Math.round(h*.07));
+    const nameFs=autoFit(ctx,tour.name,textW-p,2,minNameFs,maxNameFs);
+    ctx.font=`bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle=C.white;
+    ctx.textBaseline='top'; ts(ctx);
+    wrap(ctx,tour.name,p,ty,textW-p,Math.round(nameFs*1.22),2); tc(ctx);
+  }
+  // CTA: vpravo dole
+  const cw=Math.round(w*.145), ch=Math.round(h*.24);
+  rr(ctx,w-p-cw,h-p-ch,cw,ch,6,C.green);
+  ctx.font=`bold ${Math.round(h*.1)}px Ubuntu,Arial`; ctx.fillStyle=C.white;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('Viac info',w-p-cw/2,h-p-ch/2); ctx.textAlign='left';
+}
+
+// LANDSCAPE: 1200×628 – FB News Feed a pod.
+function drawLandscape(ctx,w,h,tour,tImg,lImg){
+  if(tImg){imgCover(ctx,tImg,0,0,w,h);}
+  else{ctx.fillStyle=C.primary;ctx.fillRect(0,0,w,h);}
+  // Silný gradient – spodných 78%
+  grad(ctx,0,h*.22,w,h*.78,'b','rgba(12,20,50,0)','rgba(12,20,50,.98)');
+  grad(ctx,0,0,w,h*.25,'t','rgba(0,0,0,.6)','rgba(0,0,0,0)');
+  const p=Math.round(w*.033);
+  // Logo
+  const logoH=Math.round(h*.1);
+  drawLogo(ctx,lImg,p,p,Math.round(h*.5),logoH);
+  // Všetko od dna nahor
+  const bot=h-p;
+  ctx.font=`${Math.round(h*.027)}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.38)';
+  ctx.textAlign='right'; ctx.textBaseline='bottom'; ctx.fillText('ckdaka.sk',w-p,bot);
+  ctx.textAlign='left';
+  const priceFs=Math.round(h*.092);
+  let curBot=bot-Math.round(h*.028*1.4);
+  if(tour.minPrice){
+    ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green;
+    ctx.textBaseline='bottom'; ts(ctx);
+    ctx.fillText(`od ${Math.round(tour.minPrice)} €`,p,curBot); tc(ctx);
+    curBot-=Math.round(priceFs*1.1);
+  }
+  if(tour.maxDiscount>0){
+    const dfs=Math.round(h*.037);
+    ctx.font=`${dfs}px Ubuntu,Arial`; ctx.fillStyle=C.greenLight;
+    ctx.textBaseline='bottom'; ts(ctx);
+    ctx.fillText(`Zľava ${tour.maxDiscount}%`,p,curBot); tc(ctx);
+    curBot-=Math.round(dfs*1.35);
+  }
+  const nameFs=autoFit(ctx,tour.name,w*.62,2,Math.round(h*.042),Math.round(h*.082));
+  const lh2=Math.round(nameFs*1.26);
+  ctx.font=`bold ${nameFs}px Ubuntu,Arial`;
+  const words2=tour.name.split(' '); let ln='',lns=[];
+  for(const wd of words2){
+    const t2=ln?ln+' '+wd:wd;
+    if(ctx.measureText(t2).width>w*.62&&ln){lns.push(ln);if(lns.length>=2){lns[1]+='…';break;}ln=wd;}else ln=t2;
+  }
+  if(ln&&lns.length<2)lns.push(ln);
+  ctx.fillStyle=C.white; ctx.textBaseline='bottom'; ts(ctx);
+  for(let i=lns.length-1;i>=0;i--){
+    ctx.fillText(lns[i],p,curBot-(lns.length-1-i)*lh2);
+  }
+  tc(ctx);
+  curBot-=lns.length*lh2+Math.round(h*.012);
+  const destFs=Math.round(h*.036);
+  ctx.font=`500 ${destFs}px Ubuntu,Arial`; ctx.fillStyle=C.white;
+  ctx.textBaseline='bottom'; ctx.globalAlpha=.85; ts(ctx);
+  ctx.fillText(ellipsis(ctx,tour.dest.toUpperCase(),w*.62),p,curBot); tc(ctx); ctx.globalAlpha=1;
+  const cw=Math.round(w*.155),ch=Math.round(h*.115);
+  rr(ctx,w-p-cw,bot-ch,cw,ch,7,C.green);
+  ctx.font=`bold ${Math.round(h*.046)}px Ubuntu,Arial`; ctx.fillStyle=C.white;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Viac info ›',w-p-cw/2,bot-ch/2);
+  ctx.textAlign='left';
+}
+
+// SQUARE / RECT: 300×250, 1080×1080
+function drawSquare(ctx,w,h,tour,tImg,lImg){
+  // Obraz: horných 52% – yFocus 0.55 = viac krajiny, menej oblohy
+  const imgH=Math.round(h*.52);
+  if(tImg){
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,w,imgH); ctx.clip();
+    imgCover(ctx,tImg,0,0,w,imgH,0.55); ctx.restore();
+    // Jemný gradient dolu pre plynulý prechod do panelu
+    grad(ctx,0,imgH*0.65,w,imgH*0.35,'b','rgba(31,49,95,0)','rgba(31,49,95,.3)');
+  } else {ctx.fillStyle=C.primaryLight;ctx.fillRect(0,0,w,imgH);}
+  // Modrý panel
+  ctx.fillStyle=C.primary; ctx.fillRect(0,imgH,w,h-imgH);
+  ctx.fillStyle=C.green; ctx.fillRect(0,imgH,w,Math.max(3,Math.round(h*.005)));
+  const p=Math.round(w*.05);
+  // Logo: vľavo hore v obrazovej časti
+  const logoH=Math.round(imgH*.18);
+  drawLogo(ctx,lImg,p,p,Math.round(logoH*4.5),logoH);
+  // Zľava badge: vpravo hore
+  if(tour.maxDiscount>0){
+    const dbadgeFs=Math.round(w*.058);
+    ctx.font=`bold ${dbadgeFs}px Ubuntu,Arial`;
+    const dt=`-${tour.maxDiscount}%`;
+    const dw2=ctx.measureText(dt).width+Math.round(p*.8);
+    rr(ctx,w-p-dw2,p,dw2,Math.round(dbadgeFs*1.5),4,C.green);
+    ctx.fillStyle=C.white; ctx.textBaseline='top'; ctx.textAlign='center';
+    ctx.fillText(dt,w-p-dw2/2,p+Math.round(dbadgeFs*.2)); ctx.textAlign='left';
+  }
+  // ── Textový panel (od hora, fixné zóny) ──
+  const panH=h-imgH;
+  const pad2=Math.round(p*.9);
+  // Destinácia
+  const destFs=Math.round(panH*.125);
+  let ty=imgH+Math.round(panH*.09);
+  ctx.font=`300 ${destFs}px Ubuntu,Arial`; ctx.fillStyle=C.greenLight; ctx.textBaseline='top';
+  ctx.fillText(ellipsis(ctx,tour.dest.toUpperCase(),w-p*2),p,ty); ty+=Math.round(destFs*1.35);
+  // Názov – AUTO-FIT: čo najväčší font, 2 riadky
+  const nameMaxH = panH - (ty-imgH) - Math.round(panH*.28);
+  const maxNameFs = Math.round(panH*.18);
+  const minNameFs = Math.max(8, Math.round(panH*.085));
+  const nameFs = autoFit(ctx, tour.name, w-p*2, 2, minNameFs, maxNameFs);
+  ctx.font=`bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle=C.white; ctx.textBaseline='top';
+  const nl=wrap(ctx,tour.name,p,ty,w-p*2,Math.round(nameFs*1.22),2); ty+=nl+Math.round(panH*.04);
+  // Cena – ak ostáva miesto
+  if(tour.minPrice&&ty<h-Math.round(panH*.1)){
+    const priceFs=Math.min(Math.round(panH*.20),Math.round((h-ty-pad2)*.80));
+    ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green; ctx.textBaseline='top';
+    ctx.fillText(`od ${Math.round(tour.minPrice)} €`,p,ty);
+  }
+  ctx.font=`${Math.round(panH*.085)}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.32)';
+  ctx.textAlign='right'; ctx.textBaseline='bottom'; ctx.fillText('ckdaka.sk',w-p,h-pad2);
+  ctx.textAlign='left';
+}
+
+// SKYSCRAPER: 160×600, 300×600
+function drawSkyscraper(ctx,w,h,tour,tImg,lImg){
+  const imgH=Math.round(h*.46);
+  if(tImg){
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,w,imgH); ctx.clip();
+    imgCover(ctx,tImg,0,0,w,imgH,0.55);  // yFocus 0.55 = viac krajiny
+    grad(ctx,0,Math.round(imgH*.55),w,Math.round(imgH*.45),'b','rgba(31,49,95,0)',C.primary);
+    ctx.restore();
+  } else {ctx.fillStyle=C.primaryLight;ctx.fillRect(0,0,w,imgH);}
+  ctx.fillStyle=C.primary; ctx.fillRect(0,imgH,w,h-imgH);
+  ctx.fillStyle=C.green; ctx.fillRect(0,imgH,w,Math.max(3,Math.round(h*.004)));
+  const p=Math.round(w*.062);
+  const panH=h-imgH;
+  // Logo
+  const logoH=Math.round(w*.16);
+  const logoY=imgH+Math.round(p*.85);
+  drawLogo(ctx,lImg,p,logoY,w-p*2,logoH);
+  let ty=logoY+logoH+Math.round(p*.6);
+  // Destinácia
+  const destFs=Math.round(w*.082);
+  ctx.font=`300 ${destFs}px Ubuntu,Arial`; ctx.fillStyle=C.greenLight; ctx.textBaseline='top';
+  ctx.fillText(ellipsis(ctx,tour.dest.toUpperCase(),w-p*2),p,ty); ty+=Math.round(destFs*1.3);
+  // Rezervuj priestor zdola: web + cena + CTA + separator
+  const webH   = Math.round(p*1.3);
+  const priceH = tour.minPrice ? Math.round(w*.145)+Math.round(p*.4) : 0;
+  const ctaH   = Math.round(h*.068);
+  const sepH   = Math.round(p*.5)+2;
+  const reserved = webH+priceH+ctaH+sepH+Math.round(p*1.5);
+  // Názov: AUTO-FIT do zostávajúceho priestoru, max 3 riadky
+  const nameMaxH = h - reserved - ty;
+  const maxLines = 3;
+  const maxNameFs = Math.round(w*(w<200?.10:.095));
+  const minNameFs = Math.max(8, Math.round(w*.055));
+  let nameFs = minNameFs;
+  for(let fs=maxNameFs; fs>=minNameFs; fs--){
+    ctx.font=`bold ${fs}px Ubuntu,Arial`;
+    const words=tour.name.split(' '); let lines=0, line='';
+    for(const wd of words){
+      const t2=line?line+' '+wd:wd;
+      if(ctx.measureText(t2).width>w-p*2&&line){lines++;if(lines>=maxLines)break;line=wd;}else line=t2;
+    }
+    if(line)lines++;
+    if(lines<=maxLines && lines*fs*1.25<=nameMaxH){nameFs=fs;break;}
+  }
+  ctx.font=`bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle=C.white; ctx.textBaseline='top';
+  const nl2=wrap(ctx,tour.name,p,ty,w-p*2,Math.round(nameFs*1.25),maxLines);
+  ty+=nl2+Math.round(p*.4);
+  // Separator
+  ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(p,ty,w-p*2,1); ty+=Math.round(p*.5)+1;
+  // CTA
+  rr(ctx,p,ty,w-p*2,ctaH,ctaH/2,C.green);
+  ctx.font=`bold ${Math.round(w*.080)}px Ubuntu,Arial`; ctx.fillStyle=C.white;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Viac info ›',w/2,ty+ctaH/2);
+  ctx.textAlign='left'; ty+=ctaH+Math.round(p*.45);
+  // Cena
+  if(tour.minPrice&&ty<h-webH-p){
+    const priceFs=Math.min(Math.round(w*.130),Math.round((h-ty-webH-p)*.80));
+    ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green;
+    ctx.textBaseline='top'; ctx.textAlign='center';
+    ctx.fillText(`od ${Math.round(tour.minPrice)} €`,w/2,ty);
+    ctx.textAlign='left';
+  }
+  ctx.font=`${Math.round(w*.067)}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.33)';
+  ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText('ckdaka.sk',w/2,h-Math.round(p*.3));
+  ctx.textAlign='left';
+}
+
+// STORY: 1080×1920
+function drawStory(ctx,w,h,tour,tImg,lImg){
+  if(tImg){imgCover(ctx,tImg,0,0,w,h);}
+  else{ctx.fillStyle=C.primary;ctx.fillRect(0,0,w,h);}
+  // Pregraduácia: top a bottom
+  grad(ctx,0,0,w,h*.26,'t','rgba(20,32,72,.9)','rgba(0,0,0,0)');
+  grad(ctx,0,h*.44,w,h*.56,'b','rgba(0,0,0,0)','rgba(15,25,55,.98)');
+  const p=Math.round(w*.07);
+  // ── TOP: logo centrovaný ──
+  const logoH=Math.round(h*.055);
+  const logoW=Math.round(logoH*5);
+  drawLogo(ctx,lImg,Math.round((w-logoW)/2),Math.round(p*.9),logoW,logoH);
+  // ── BOTTOM: pevné sekcie od dna ──
+  const bot=h-p;
+  // Web (najnižšie)
+  const webFs=Math.round(w*.032);
+  ctx.font=`${webFs}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.4)';
+  ctx.textAlign='right'; ctx.textBaseline='bottom'; ctx.fillText('ckdaka.sk',w-p,bot);
+  ctx.textAlign='left';
+  // Cena
+  const priceBot=bot-Math.round(webFs*1.6);
+  const priceFs=Math.round(w*.115);
+  if(tour.minPrice){
+    ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green; ctx.textBaseline='bottom';
+    ts(ctx); ctx.fillText(`od ${Math.round(tour.minPrice)} €`,p,priceBot); tc(ctx);
+  }
+  // Zľava
+  const discBot=priceBot-(tour.minPrice?Math.round(priceFs*1.1):0);
+  if(tour.maxDiscount>0){
+    const dfs=Math.round(w*.05);
+    ctx.font=`${dfs}px Ubuntu,Arial`; ctx.fillStyle=C.greenLight; ctx.textBaseline='bottom';
+    ts(ctx); ctx.fillText(`Zľava ${tour.maxDiscount}%`,p,discBot); tc(ctx);
+  }
+  const discSpace=(tour.maxDiscount>0?Math.round(w*.06):0);
+  // CTA
+  const ctaH=Math.round(h*.06),ctaW=Math.round(w*.52);
+  const ctaBot=discBot-discSpace-Math.round(h*.015);
+  rr(ctx,p,ctaBot-ctaH,ctaW,ctaH,ctaH/2,C.green);
+  ctx.font=`bold ${Math.round(w*.047)}px Ubuntu,Arial`; ctx.fillStyle=C.white;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Viac info ›',p+ctaW/2,ctaBot-ctaH/2);
+  ctx.textAlign='left';
+  // Oddeľovač
+  const sepY=ctaBot-ctaH-Math.round(h*.02);
+  ctx.fillStyle=C.green; ctx.fillRect(p,sepY,w-p*2,2);
+  // Destinácia
+  const destFs=Math.round(w*.055);
+  ctx.font=`300 ${destFs}px Ubuntu,Arial`; ctx.fillStyle=C.white; ctx.textBaseline='bottom';
+  ctx.globalAlpha=.8; ts(ctx); ctx.fillText(ellipsis(ctx,tour.dest.toUpperCase(),w-p*2),p,sepY-Math.round(h*.01)); tc(ctx); ctx.globalAlpha=1;
+  // Názov (max 3 riadky) – AUTO-FIT nad destináciou
+  const nameBot=sepY-Math.round(h*.01)-Math.round(destFs*1.3);
+  const nameAvailH = nameBot - Math.round(h*.3); // priestor nad logom je vyhradený
+  const maxNameFs=Math.round(w*.080);
+  const minNameFs=Math.max(10,Math.round(w*.038));
+  const nameFs=autoFit(ctx,tour.name,w-p*2,3,minNameFs,maxNameFs);
+  const nameLh=Math.round(nameFs*1.26);
+  ctx.font=`bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle=C.white; ctx.textBaseline='bottom';
+  const nwords=tour.name.split(' '); let nline='',nlines=[];
+  for(const wd of nwords){
+    const t3=nline?nline+' '+wd:wd;
+    if(ctx.measureText(t3).width>w-p*2&&nline){nlines.push(nline);if(nlines.length>=3){nlines[2]+='…';break;}nline=wd;}else nline=t3;
+  }
+  if(nline&&nlines.length<3)nlines.push(nline);
+  ts(ctx);
+  for(let i=nlines.length-1;i>=0;i--){ctx.fillText(nlines[i],p,nameBot-(nlines.length-1-i)*nameLh);}
+  tc(ctx);
+}
+
+// ════════════════════════════════════════════════════════
+// ── SVETLÝ ŠTÝL – VLNKA ──
+// ════════════════════════════════════════════════════════
+
+// ── VLNKOVÁ CESTA: 3 symetrické vrcholy (sínusový vzor) ──
+// d = šírka / 6 → jeden pol-cyklus. k=0.52 = bezier "sínusový" faktor.
+// bot = úroveň údolia, top = úroveň vrcholu.
+// clipPhotoWave MUSÍ byť presná reverzná cesta (segmenty odzadu, CP1↔CP2).
+function wavePath(ctx, w, splitY, amp) {
+  const d = w / 6, k = 0.52;
+  const bot = splitY + amp * 0.3;   // úroveň údolia (mierne pod stredovou líniou)
+  const top = splitY - amp;          // úroveň vrcholu (nad stredovou líniou)
+  ctx.moveTo(0, bot);
+  ctx.bezierCurveTo(d*k,       bot, d - d*k,   top, d,   top);  // Peak 1
+  ctx.bezierCurveTo(d + d*k,   top, 2*d-d*k,   bot, 2*d, bot);  // Valley 1
+  ctx.bezierCurveTo(2*d+d*k,   bot, 3*d-d*k,   top, 3*d, top);  // Peak 2
+  ctx.bezierCurveTo(3*d+d*k,   top, 4*d-d*k,   bot, 4*d, bot);  // Valley 2
+  ctx.bezierCurveTo(4*d+d*k,   bot, 5*d-d*k,   top, 5*d, top);  // Peak 3
+  ctx.bezierCurveTo(5*d+d*k,   top, w - d*k,   bot,   w, bot);  // End
+}
+
+// Biely panel s trojvlnkovou hranou navrchu
+function drawWhitePanel(ctx, w, h, splitY, amp) {
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  wavePath(ctx, w, splitY, amp);
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fill();
+}
+
+// Oreže fotografiu vlnkou – presná reverzná cesta
+function clipPhotoWave(ctx, w, splitY, amp) {
+  const d = w / 6, k = 0.52;
+  const bot = splitY + amp * 0.3;
+  const top = splitY - amp;
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(w, bot);
+  ctx.bezierCurveTo(w - d*k,   bot, 5*d+d*k,  top, 5*d, top);  // Rev End
+  ctx.bezierCurveTo(5*d-d*k,   top, 4*d+d*k,  bot, 4*d, bot);  // Rev Peak 3
+  ctx.bezierCurveTo(4*d-d*k,   bot, 3*d+d*k,  top, 3*d, top);  // Rev Valley 2
+  ctx.bezierCurveTo(3*d-d*k,   top, 2*d+d*k,  bot, 2*d, bot);  // Rev Peak 2
+  ctx.bezierCurveTo(2*d-d*k,   bot, d + d*k,  top,   d, top);  // Rev Valley 1
+  ctx.bezierCurveTo(d - d*k,   top, d*k,       bot,   0, bot);  // Rev Peak 1
+  ctx.closePath(); ctx.clip();
+}
+
+// ── VERTIKÁLNA VLNKA (landscape): foto vľavo, biely panel vpravo ──
+// Rovnaký vzor ako horizontálna, ale os x↔y vymenená.
+function drawWhitePanelV(ctx, w, h, splitX, amp) {
+  const d = h / 6, k = 0.52;
+  const rig = splitX + amp * 0.3;  // úroveň údolia (vpravo od stredu)
+  const lef = splitX - amp;         // úroveň vrcholu (vľavo, do foto)
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.moveTo(rig, 0);
+  ctx.bezierCurveTo(rig, d*k,       lef, d - d*k,   lef, d);    // Peak 1
+  ctx.bezierCurveTo(lef, d + d*k,   rig, 2*d-d*k,   rig, 2*d);  // Valley 1
+  ctx.bezierCurveTo(rig, 2*d+d*k,   lef, 3*d-d*k,   lef, 3*d);  // Peak 2
+  ctx.bezierCurveTo(lef, 3*d+d*k,   rig, 4*d-d*k,   rig, 4*d);  // Valley 2
+  ctx.bezierCurveTo(rig, 4*d+d*k,   lef, 5*d-d*k,   lef, 5*d);  // Peak 3
+  ctx.bezierCurveTo(lef, 5*d+d*k,   rig, h - d*k,   rig, h);    // End
+  ctx.lineTo(w, h); ctx.lineTo(w, 0); ctx.closePath(); ctx.fill();
+}
+
+function clipPhotoWaveV(ctx, w, h, splitX, amp) {
+  const d = h / 6, k = 0.52;
+  const rig = splitX + amp * 0.3;
+  const lef = splitX - amp;
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(rig, 0);
+  // Rovnaká cesta ako drawWhitePanelV (tá istá smer = horný smer) + uzavretie vľavo
+  ctx.bezierCurveTo(rig, d*k,       lef, d - d*k,   lef, d);
+  ctx.bezierCurveTo(lef, d + d*k,   rig, 2*d-d*k,   rig, 2*d);
+  ctx.bezierCurveTo(rig, 2*d+d*k,   lef, 3*d-d*k,   lef, 3*d);
+  ctx.bezierCurveTo(lef, 3*d+d*k,   rig, 4*d-d*k,   rig, 4*d);
+  ctx.bezierCurveTo(rig, 4*d+d*k,   lef, 5*d-d*k,   lef, 5*d);
+  ctx.bezierCurveTo(lef, 5*d+d*k,   rig, h - d*k,   rig, h);
+  ctx.lineTo(0, h); ctx.closePath(); ctx.clip();
+}
+
+// Cena: "už za  X,XX €  / N dní" – mix fontov na jednom riadku
+function drawLightPrice(ctx, tour, x, baseY, bigFs, smFs, maxW) {
+  maxW = maxW || 99999;
+  ctx.textBaseline = 'bottom'; ctx.fillStyle = C.primary;
+
+  const priceStr = `${tour.minPrice.toFixed(2).replace('.',',')} €`;
+  const daysStr  = tour.days > 0 ? `/ ${tour.days} dní` : '';
+
+  ctx.font = `${smFs}px Ubuntu,Arial`;
+  const uzaW  = ctx.measureText('už za ').width + smFs * 0.15;
+  const daysW = daysStr ? ctx.measureText(' ' + daysStr).width + smFs * 0.2 : 0;
+  ctx.font = `bold ${bigFs}px Ubuntu,Arial`;
+  const priceW = ctx.measureText(priceStr).width;
+
+  const fullW = uzaW + priceW + daysW;
+
+  if (fullW <= maxW) {
+    // Celá verzia: "už za X,XX € / N dní"
+    ctx.font = `${smFs}px Ubuntu,Arial`;  ctx.fillText('už za', x, baseY);
+    ctx.font = `bold ${bigFs}px Ubuntu,Arial`; ctx.fillText(priceStr, x + uzaW, baseY);
+    if (daysStr) { ctx.font = `${smFs}px Ubuntu,Arial`; ctx.fillText(daysStr, x + uzaW + priceW + smFs*0.2, baseY); }
+  } else if (uzaW + priceW <= maxW) {
+    // Bez "/ N dní"
+    ctx.font = `${smFs}px Ubuntu,Arial`;  ctx.fillText('už za', x, baseY);
+    ctx.font = `bold ${bigFs}px Ubuntu,Arial`; ctx.fillText(priceStr, x + uzaW, baseY);
+  } else {
+    // Len cena – zmenšená ak treba
+    let fs = bigFs;
+    ctx.font = `bold ${fs}px Ubuntu,Arial`;
+    while (fs > Math.max(smFs, 10) && ctx.measureText(priceStr).width > maxW) {
+      fs -= 1; ctx.font = `bold ${fs}px Ubuntu,Arial`;
+    }
+    ctx.fillText(ellipsis(ctx, priceStr, maxW), x, baseY);
+  }
+  return bigFs * 1.35;
+}
+
+// Dátum s ikonou
+function drawLightDate(ctx, tour, x, y, fs, maxW) {
+  if (!tour.dateFrom) return;
+  ctx.font = `${fs}px Ubuntu,Arial`; ctx.fillStyle = C.primary; ctx.textBaseline = 'top';
+  const dateStr = tour.dateTo
+    ? `${formatDate(tour.dateFrom)} – ${formatDate(tour.dateTo)}`
+    : formatDate(tour.dateFrom);
+  ctx.fillText(`📅 ${dateStr}`, x, y);
+}
+
+// ── Hlavná funkcia svetlého štýlu ──
+// variant: 'wave' (default) | 'stamp'
+function drawLight(ctx, w, h, tour, tImg, lImg, variant) {
+  const r = w / h;
+  const isStamp = (variant === 'stamp');
+  if (r >= 4) {
+    drawLightStrip(ctx, w, h, tour, tImg, lImg); // strip nemá vlnku ani znamku
+  } else if (r >= 1.6) {
+    isStamp ? drawLightStampLandscape(ctx, w, h, tour, tImg, lImg)
+            : drawLightLandscape(ctx, w, h, tour, tImg, lImg);
+  } else {
+    isStamp ? drawLightStampPortrait(ctx, w, h, tour, tImg, lImg)
+            : drawLightPortrait(ctx, w, h, tour, tImg, lImg);
+  }
+}
+
+// ── PORTRAIT/STORY/SQUARE/SKYSCRAPER: foto hore, vlnka, biely panel dolu ──
+function drawLightPortrait(ctx, w, h, tour, tImg, lImg) {
+  const splitY = Math.round(h * 0.50);
+  const amp    = Math.round(h * 0.036);   // amplitúda – 3 vlnky, jemnejší efekt
+  const p      = Math.round(w * 0.055);
+
+  // 1. Biely podklad
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0,0,w,h);
+
+  // 2. Fotografia s vlnkovým výrezom
+  if (tImg) {
+    ctx.save(); clipPhotoWave(ctx, w, splitY, amp);
+    imgCover(ctx, tImg, 0, 0, w, splitY + amp*0.6, 0.48);
+    ctx.restore();
+  } else {
+    ctx.save(); clipPhotoWave(ctx, w, splitY, amp);
+    ctx.fillStyle = C.primary; ctx.fillRect(0,0,w,splitY+amp*1.2);
+    ctx.restore();
+  }
+
+  // 3. Biely panel s vlnkou
+  drawWhitePanel(ctx, w, h, splitY, amp);
+
+  // 4. Logo: vpravo hore na fotke – šírka nesmie presiahnuť dostupný priestor
+  const logoH = Math.round(h * (h > 900 ? 0.058 : 0.095));
+  const logoW = Math.min(Math.round(logoH * 4.5), w - p * 2);
+  drawLogo(ctx, lImg, w - p - logoW, p, logoW, logoH);
+
+  // 5. Texty v bielom paneli
+  const tp    = Math.round(w * 0.07);
+  const maxW  = w - tp*2;
+  const lhBar = Math.max(3, Math.round(h * 0.006)); // zelená spodná lišta
+  // ty začína tesne pod dolinou vlnky (splitY + amp*0.3) + malý padding
+  let ty = Math.round(splitY + amp*0.3 + h*0.025);
+
+  // Dostupný priestor od ty až po spodnú líštu
+  const bottomY = h - lhBar - Math.round(h * 0.012);
+
+  // Názov zájazdu – úzke formáty dostanú viac riadkov
+  const nameLines  = w < 220 ? 4 : 3;
+  const maxNameFs  = Math.round(h * (h > 900 ? 0.072 : 0.092));
+  const minNameFs  = Math.max(10, Math.round(h * (w < 220 ? 0.028 : 0.036)));
+  const nameFs     = autoFit(ctx, tour.name, maxW, nameLines, minNameFs, maxNameFs);
+  const nameLh     = Math.round(nameFs * 1.22);
+  ctx.font         = `bold ${nameFs}px Ubuntu,Arial`;
+  ctx.fillStyle    = C.green; ctx.textBaseline = 'top';
+  const nlH        = wrap(ctx, tour.name, tp, ty, maxW, nameLh, nameLines);
+  ty += nlH + Math.round(h * 0.022);
+
+  // Cena – len ak sa zmestí
+  const bigFs = Math.round(h * (h > 900 ? 0.056 : 0.072));
+  const smFs  = Math.round(h * (h > 900 ? 0.027 : 0.034));
+  if (tour.minPrice && ty + bigFs < bottomY) {
+    ty += drawLightPrice(ctx, tour, tp, ty + bigFs, bigFs, smFs, maxW);
+  }
+
+  // Dátum – len ak sa zmestí
+  const dFs = Math.round(h * (h > 900 ? 0.026 : 0.032));
+  if (tour.dateFrom && ty + dFs*1.4 < bottomY) {
+    drawLightDate(ctx, tour, tp, ty, dFs, maxW);
+  }
+
+  // Zelená čiara dolu
+  ctx.fillStyle = C.green; ctx.fillRect(0, h - lhBar, w, lhBar);
+}
+
+// ── LANDSCAPE/HORIZONTAL: foto vľavo, vlnka, biely panel vpravo ──
+function drawLightLandscape(ctx, w, h, tour, tImg, lImg) {
+  const splitX = Math.round(w * 0.50);
+  const amp    = Math.round(h * 0.08);   // amplitúda relatívna k výške – 3 vlnky
+  const p      = Math.round(h * 0.09);
+  const tp     = Math.round(h * 0.10);
+
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0,0,w,h);
+
+  if (tImg) {
+    ctx.save(); clipPhotoWaveV(ctx, w, h, splitX, amp);
+    imgCover(ctx, tImg, 0, 0, splitX + amp*0.6, h, 0.5);
+    ctx.restore();
+  } else {
+    ctx.save(); clipPhotoWaveV(ctx, w, h, splitX, amp);
+    ctx.fillStyle = C.primary; ctx.fillRect(0,0,splitX+amp*0.6,h);
+    ctx.restore();
+  }
+  drawWhitePanelV(ctx, w, h, splitX, amp);
+
+  // Logo: vľavo hore na fotke – max šírka = dostupná zóna na foto
+  const logoH = Math.round(h * 0.18);
+  const logoMaxW = Math.min(Math.round(logoH * 4.5), splitX - p * 2);
+  drawLogo(ctx, lImg, p, p, logoMaxW, logoH);
+
+  // Texty vpravo – tx začína za dolinou vlnky (splitX + amp*0.3 + padding)
+  const tx   = Math.round(splitX + amp*0.3 + w*0.018);
+  const maxW = w - tx - p;
+  let ty     = Math.round(h * 0.10);
+  const lh   = Math.max(3, Math.round(h * 0.012));
+  const bottomY = h - lh - Math.round(h * 0.02);
+
+  const maxNameFs = Math.round(h * 0.175);
+  const minNameFs = Math.max(9, Math.round(h * 0.07));
+  const nameFs    = autoFit(ctx, tour.name, maxW, 2, minNameFs, maxNameFs);
+  const nameLh    = Math.round(nameFs * 1.22);
+  ctx.font        = `bold ${nameFs}px Ubuntu,Arial`;
+  ctx.fillStyle   = C.green; ctx.textBaseline = 'top';
+  const nlH       = wrap(ctx, tour.name, tx, ty, maxW, nameLh, 2);
+  ty += nlH + Math.round(h * 0.05);
+
+  const bigFs = Math.round(h * 0.13);
+  const smFs  = Math.round(h * 0.065);
+  if (tour.minPrice && ty + bigFs < bottomY) {
+    ty += drawLightPrice(ctx, tour, tx, ty + bigFs, bigFs, smFs, maxW);
+  }
+  const dFs = Math.round(h * 0.065);
+  if (tour.dateFrom && ty + dFs*1.4 < bottomY) {
+    drawLightDate(ctx, tour, tx, ty, dFs, maxW);
+  }
+
+  ctx.fillStyle = C.green; ctx.fillRect(0, h - lh, w, lh);
+}
+
+// ── STRIP: svetlý bez vlnky (príliš úzky) ──
+function drawLightStrip(ctx, w, h, tour, tImg, lImg) {
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0,0,w,h);
+  const p = Math.max(3, Math.round(h*.1));
+  // Foto vľavo
+  const imgW = Math.round(w*0.28);
+  if (tImg) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,imgW,h); ctx.clip();
+    imgCover(ctx,tImg,0,0,imgW,h,0.5); ctx.restore();
+    grad(ctx,imgW*.4,0,imgW*.6,h,'r','rgba(255,255,255,0)','rgba(255,255,255,1)');
+  }
+  // Tenká zelená čiara vľavo
+  ctx.fillStyle=C.green; ctx.fillRect(0,0,3,h);
+  // Logo
+  const logoH=Math.round(h*.64);
+  const lx = imgW + p;
+  const actualLogoW = drawLogo(ctx,lImg,lx,Math.round((h-logoH)/2),Math.round(w*.2),logoH);
+  const textX = lx + actualLogoW + Math.round(p*.9);
+  // Cena
+  let priceRight = w - p;
+  if (tour.minPrice) {
+    const pfs = Math.max(7, Math.round(h*.28));
+    ctx.font = `bold ${pfs}px Ubuntu,Arial`; ctx.fillStyle = C.green;
+    const ps = `od ${Math.round(tour.minPrice)} €`;
+    const pw = ctx.measureText(ps).width;
+    const bpad = Math.round(p*.6);
+    const bh = Math.round(h*.58), by = Math.round((h-bh)/2);
+    const bx = priceRight - pw - bpad*2;
+    if (bx > textX+16) {
+      rr(ctx,bx-bpad,by,pw+bpad*2,bh,4,C.green);
+      ctx.fillStyle=C.white; ctx.textBaseline='middle'; ctx.fillText(ps,bx,h/2);
+      priceRight = bx - bpad - p;
+    }
+  }
+  const maxTxtW = priceRight - textX - p;
+  if (maxTxtW > 20) {
+    const {fs,t} = fitLine(ctx,tour.name,maxTxtW,Math.max(7,Math.round(h*.14)),Math.round(h*.36),'600');
+    ctx.font=`600 ${fs}px Ubuntu,Arial`; ctx.fillStyle=C.primary; ctx.textBaseline='middle';
+    ctx.fillText(t,textX,h/2);
+  }
+  ctx.fillStyle=C.green; ctx.fillRect(0,h-2,w,2);
+}
+
+// ════════════════════════════════════════════════════════
+// ── SVETLÝ ŠTÝL – ZNAMKA (poštová perforácia) ──
+// ════════════════════════════════════════════════════════
+
+// Horizontálna perforácia (rad krúžkov) – biele kruhy presekávajú hranicu foto/panel
+function drawStampDivider(ctx, w, splitY, dotR) {
+  const step = Math.round(dotR * 2.6);
+  const cnt  = Math.ceil(w / step) + 1;
+  const sx   = (w - (cnt - 1) * step) / 2;
+  ctx.fillStyle = '#FFFFFF';
+  for (let i = 0; i < cnt; i++) {
+    ctx.beginPath(); ctx.arc(sx + i * step, splitY, dotR, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// Vertikálna perforácia (stĺpec krúžkov)
+function drawStampDividerV(ctx, h, splitX, dotR) {
+  const step = Math.round(dotR * 2.6);
+  const cnt  = Math.ceil(h / step) + 1;
+  const sy   = (h - (cnt - 1) * step) / 2;
+  ctx.fillStyle = '#FFFFFF';
+  for (let i = 0; i < cnt; i++) {
+    ctx.beginPath(); ctx.arc(splitX, sy + i * step, dotR, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ZNAMKA PORTRAIT: foto hore (obdĺžnik), perforácia, biely panel dolu
+function drawLightStampPortrait(ctx, w, h, tour, tImg, lImg) {
+  const splitY = Math.round(h * 0.50);
+  const dotR   = Math.max(4, Math.round(Math.min(w, h) * 0.016));
+  const p      = Math.round(w * 0.055);
+
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h);
+
+  if (tImg) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, splitY + dotR); ctx.clip();
+    imgCover(ctx, tImg, 0, 0, w, splitY + dotR, 0.48); ctx.restore();
+  } else {
+    ctx.fillStyle = C.primary; ctx.fillRect(0, 0, w, splitY);
+  }
+
+  // Biely panel dolu (tvrdá hrana, krúžky ju prepíšu)
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, splitY, w, h - splitY);
+
+  // Perforácia (biele krúžky na hranici)
+  drawStampDivider(ctx, w, splitY, dotR);
+
+  // Perforácia na všetkých 4 okrajoch (efekt poštovej znamky)
+  drawStampDivider(ctx, w, 0, dotR);    // horný okraj
+  drawStampDivider(ctx, w, h, dotR);    // dolný okraj
+  drawStampDividerV(ctx, h, 0, dotR);   // ľavý okraj
+  drawStampDividerV(ctx, h, w, dotR);   // pravý okraj
+
+  // Logo: vpravo hore na foto – šírka nesmie presiahnuť dostupný priestor
+  const logoH = Math.round(h * (h > 900 ? 0.058 : 0.095));
+  const logoW = Math.min(Math.round(logoH * 4.5), w - p * 2);
+  drawLogo(ctx, lImg, w - p - logoW, p, logoW, logoH);
+
+  // Text v bielom paneli
+  const tp = Math.round(w * 0.07), maxW = w - tp * 2;
+  let ty   = splitY + dotR + Math.round(h * 0.042);
+  const lh = Math.max(3, Math.round(h * 0.006));
+  const bottomY = h - lh - Math.round(h * 0.015);
+
+  const nameLines2 = w < 220 ? 4 : 3;
+  const maxNameFs  = Math.round(h * (h > 900 ? 0.072 : 0.092));
+  const minNameFs  = Math.max(10, Math.round(h * (w < 220 ? 0.028 : 0.036)));
+  const nameFs     = autoFit(ctx, tour.name, maxW, nameLines2, minNameFs, maxNameFs);
+  ctx.font = `bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle = C.green; ctx.textBaseline = 'top';
+  const nlH = wrap(ctx, tour.name, tp, ty, maxW, Math.round(nameFs * 1.22), nameLines2);
+  ty += nlH + Math.round(h * 0.025);
+
+  const bFs = Math.round(h * (h > 900 ? 0.056 : 0.072));
+  if (tour.minPrice && ty + bFs < bottomY) {
+    ty += drawLightPrice(ctx, tour, tp, ty + bFs, bFs, Math.round(h * (h > 900 ? 0.027 : 0.034)), maxW);
+  }
+  const dFs2 = Math.round(h * (h > 900 ? 0.026 : 0.032));
+  if (tour.dateFrom && ty + dFs2 * 1.4 < bottomY) {
+    drawLightDate(ctx, tour, tp, ty, dFs2, maxW);
+  }
+
+  ctx.fillStyle = C.green; ctx.fillRect(0, h - lh, w, lh);
+  // Tenký rám (vizuálny dojem znamky)
+  ctx.strokeStyle = 'rgba(31,49,95,.14)'; ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+}
+
+// ZNAMKA LANDSCAPE: foto vľavo (obdĺžnik), perforácia, biely panel vpravo
+function drawLightStampLandscape(ctx, w, h, tour, tImg, lImg) {
+  const splitX = Math.round(w * 0.50);
+  const dotR   = Math.max(4, Math.round(Math.min(w, h) * 0.016));
+  const p      = Math.round(h * 0.09);
+
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h);
+
+  if (tImg) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, splitX + dotR, h); ctx.clip();
+    imgCover(ctx, tImg, 0, 0, splitX + dotR, h, 0.5); ctx.restore();
+  } else {
+    ctx.fillStyle = C.primary; ctx.fillRect(0, 0, splitX, h);
+  }
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(splitX, 0, w - splitX, h);
+  drawStampDividerV(ctx, h, splitX, dotR);
+
+  // Perforácia na všetkých 4 okrajoch (efekt poštovej znamky)
+  drawStampDivider(ctx, w, 0, dotR);    // horný okraj
+  drawStampDivider(ctx, w, h, dotR);    // dolný okraj
+  drawStampDividerV(ctx, h, 0, dotR);   // ľavý okraj
+  drawStampDividerV(ctx, h, w, dotR);   // pravý okraj
+
+  // Logo na foto (ľavý horný roh) – max logoH × dostupná šírka
+  const logoH = Math.round(h * 0.18);
+  const maxLogoW = Math.min(Math.round(logoH * 4.5), splitX - p * 2);
+  drawLogo(ctx, lImg, p, p, maxLogoW, logoH);
+
+  // Text: pravý panel
+  const tx = splitX + dotR + Math.round(w * 0.025);
+  const maxW = w - tx - p;
+  const lh = Math.max(3, Math.round(h * 0.012));
+  const bottomY = h - lh - Math.round(h * 0.02);
+  let ty = Math.round(h * 0.10);
+
+  const maxNameFs = Math.round(h * 0.175), minNameFs = Math.max(9, Math.round(h * 0.07));
+  const nameFs    = autoFit(ctx, tour.name, maxW, 2, minNameFs, maxNameFs);
+  ctx.font = `bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle = C.green; ctx.textBaseline = 'top';
+  const nlH = wrap(ctx, tour.name, tx, ty, maxW, Math.round(nameFs * 1.22), 2);
+  ty += nlH + Math.round(h * 0.06);
+
+  const bFs = Math.round(h * 0.13);
+  if (tour.minPrice && ty + bFs < bottomY) {
+    ty += drawLightPrice(ctx, tour, tx, ty + bFs, bFs, Math.round(h * 0.065), maxW);
+  }
+  const dFs3 = Math.round(h * 0.065);
+  if (tour.dateFrom && ty + dFs3 * 1.4 < bottomY) {
+    drawLightDate(ctx, tour, tx, ty, dFs3, maxW);
+  }
+
+  ctx.fillStyle = C.green; ctx.fillRect(0, h - lh, w, lh);
+  ctx.strokeStyle = 'rgba(31,49,95,.14)'; ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+}
+
+// ── Helpers ──
+function loadImg(url){ return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=url; }); }
+function setSt(txt,loading){ document.getElementById('st').textContent=txt; document.getElementById('spin').style.display=loading?'block':'none'; }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Modal Viewer ──
+let _modalReal = false;
+function openModal(url, fname, w, h) {
+  _modalReal = false;
+  const m = document.createElement('div'); m.id='modal';
+  m.innerHTML = `
+    <div id="modal-bg" onclick="closeModal()"></div>
+    <div id="modal-box">
+      <div id="modal-hd">
+        <span class="mname" title="${esc(fname)}">${esc(fname)}</span>
+        <span class="mdim">${w}×${h} px</span>
+        <button id="mbtn-real" onclick="toggleModalSize(${w},${h})">📐 Skutočná veľkosť</button>
+        <button onclick="closeModal()">✕ Zavrieť</button>
+      </div>
+      <div id="modal-wrap" class="fit">
+        <img id="modal-img" src="${url}" style="width:auto;height:auto">
+      </div>
+      <div id="modal-ft">
+        <a href="${url}" download="${esc(fname)}">⬇ Stiahnuť PNG</a>
+        <span class="minfo">Kliknite "Skutočná veľkosť" pre zobrazenie 1:1 pixel</span>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  document.addEventListener('keydown', _modalKey);
+}
+function closeModal() {
+  const m = document.getElementById('modal');
+  if (m) { m.remove(); document.removeEventListener('keydown', _modalKey); }
+}
+function _modalKey(e) { if (e.key==='Escape') closeModal(); }
+function toggleModalSize(w, h) {
+  _modalReal = !_modalReal;
+  const wrap = document.getElementById('modal-wrap');
+  const img  = document.getElementById('modal-img');
+  const btn  = document.getElementById('mbtn-real');
+  if (_modalReal) {
+    wrap.classList.remove('fit');
+    img.style.width = w+'px'; img.style.height = h+'px';
+    btn.textContent = '🔍 Prispôsobiť obrazovke'; btn.classList.add('mbtn-on');
+    // Scroll to center
+    setTimeout(() => {
+      wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
+      wrap.scrollTop  = (wrap.scrollHeight - wrap.clientHeight) / 2;
+    }, 50);
+  } else {
+    wrap.classList.add('fit');
+    img.style.width=''; img.style.height='';
+    btn.textContent = '📐 Skutočná veľkosť'; btn.classList.remove('mbtn-on');
+  }
+}
+
+// ── Start ──
+init();
+</script>
+</body>
+</html>
