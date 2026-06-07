@@ -151,7 +151,8 @@ body{font-family:'Ubuntu','Helvetica Neue',Helvetica,Arial,sans-serif;background
 #modal-wrap{overflow:auto;flex:1;display:flex;background:#1a1f38;padding:16px;
             align-items:flex-start;justify-content:flex-start}
 #modal-wrap.fit{align-items:center;justify-content:center}
-#modal-wrap img{display:block;image-rendering:pixelated}
+#modal-wrap img{display:block;image-rendering:auto}
+#modal-wrap.actual img{image-rendering:pixelated}
 #modal-wrap.fit img{max-width:calc(96vw - 32px);max-height:calc(96vh - 100px);
                     width:auto!important;height:auto!important;image-rendering:auto}
 #modal-ft{padding:10px 16px;background:#f5f7fb;border-top:1px solid var(--gray);
@@ -1046,17 +1047,18 @@ function addCard(canvas, fname, tour, fmt) {
     <div class="pc-img"></div>
     <div class="pc-ft"><span>${esc(tour.name.slice(0,40))}${tour.name.length>40?'…':''}</span>
       <button class="dl" data-fname="${esc(fnameFmt(fname,ef))}">⬇ ${dlLabel}</button></div>`;
-  // Preview: vždy PNG (ostrý, bez kompresných artefaktov WebP/JPEG)
+  // Preview: vždy PNG (ostrý, bez artefaktov)
   const previewUrl = canvas.toDataURL('image/png');
   const imgEl = Object.assign(document.createElement('img'), {src: previewUrl, title:'Kliknite pre väčší náhľad'});
-  imgEl.addEventListener('click', () => openModal(previewUrl, fname, fmt.w, fmt.h));
   card.querySelector('.pc-img').appendChild(imgEl);
-  // Download: zvolený formát
+  // Download: zvolený formát (WebP/PNG) – odovzdaj do modalu správny URL
   canvasBlob(canvas, ef).then(blob => {
-    const dlUrl = URL.createObjectURL(blob);
+    const dlUrl  = URL.createObjectURL(blob);
+    const dlName = fnameFmt(fname, ef);
     card.querySelector('.dl').addEventListener('click', () => {
-      Object.assign(document.createElement('a'), {href:dlUrl, download:fnameFmt(fname,ef)}).click();
+      Object.assign(document.createElement('a'), {href:dlUrl, download:dlName}).click();
     });
+    imgEl.addEventListener('click', () => openModal(previewUrl, dlUrl, dlName, fmt.w, fmt.h));
   });
   document.getElementById('pgrid').appendChild(card);
 }
@@ -2035,8 +2037,9 @@ function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 
 // ── Modal Viewer ──
 let _modalReal = false;
-function openModal(url, fname, w, h) {
+function openModal(previewUrl, dlUrl, fname, w, h) {
   _modalReal = false;
+  const ext = (fname.split('.').pop() || 'PNG').toUpperCase();
   const m = document.createElement('div'); m.id='modal';
   m.innerHTML = `
     <div id="modal-bg" onclick="closeModal()"></div>
@@ -2048,10 +2051,10 @@ function openModal(url, fname, w, h) {
         <button onclick="closeModal()">✕ Zavrieť</button>
       </div>
       <div id="modal-wrap" class="fit">
-        <img id="modal-img" src="${url}" style="width:auto;height:auto">
+        <img id="modal-img" src="${previewUrl}" style="width:auto;height:auto">
       </div>
       <div id="modal-ft">
-        <a href="${url}" download="${esc(fname)}">⬇ Stiahnuť PNG</a>
+        <a id="modal-dl" href="${dlUrl}" download="${esc(fname)}">⬇ Stiahnuť ${ext}</a>
         <span class="minfo">Kliknite "Skutočná veľkosť" pre zobrazenie 1:1 pixel</span>
       </div>
     </div>`;
@@ -2069,16 +2072,15 @@ function toggleModalSize(w, h) {
   const img  = document.getElementById('modal-img');
   const btn  = document.getElementById('mbtn-real');
   if (_modalReal) {
-    wrap.classList.remove('fit');
+    wrap.classList.remove('fit'); wrap.classList.add('actual');
     img.style.width = w+'px'; img.style.height = h+'px';
     btn.textContent = '🔍 Prispôsobiť obrazovke'; btn.classList.add('mbtn-on');
-    // Scroll to center
     setTimeout(() => {
       wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
       wrap.scrollTop  = (wrap.scrollHeight - wrap.clientHeight) / 2;
     }, 50);
   } else {
-    wrap.classList.add('fit');
+    wrap.classList.remove('actual'); wrap.classList.add('fit');
     img.style.width=''; img.style.height='';
     btn.textContent = '📐 Skutočná veľkosť'; btn.classList.remove('mbtn-on');
   }
