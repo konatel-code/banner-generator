@@ -473,10 +473,22 @@ async function loadTours() {
   setSt('Načítavam zájazdy…', true);
   try {
     let text;
-    try {
-      const r = await fetch(PROXY + encodeURIComponent(XML_URL));
-      text = await r.text();
-    } catch {
+    // Na Netlify skús najprv /xml-feed (rovnaká doména → žiadny CORS, _redirects to proxuje)
+    if (_isNetlify) {
+      try {
+        const r = await fetch('/xml-feed');
+        if (r.ok) text = await r.text();
+      } catch {}
+    }
+    // Záloha: funkcia proxy
+    if (!text) {
+      try {
+        const r = await fetch(PROXY + encodeURIComponent(XML_URL));
+        if (r.ok) text = await r.text();
+      } catch {}
+    }
+    // Posledná záloha: priamo (funguje ak server má CORS hlavičky)
+    if (!text) {
       const r = await fetch(XML_URL);
       text = await r.text();
     }
