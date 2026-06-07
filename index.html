@@ -1388,40 +1388,51 @@ function drawSquare(ctx,w,h,tour,tImg,lImg){
 }
 
 // SKYSCRAPER: 160×600, 300×600
+// SKYSCRAPER: 160×600, 300×600
+// Pri 160px šírke sú fonty relatívne k výške, aby neboli príliš malé
 function drawSkyscraper(ctx,w,h,tour,tImg,lImg){
   const imgH=Math.round(h*.46);
   if(tImg){
     ctx.save(); ctx.beginPath(); ctx.rect(0,0,w,imgH); ctx.clip();
-    imgCover(ctx,tImg,0,0,w,imgH,0.55);  // yFocus 0.55 = viac krajiny
+    imgCover(ctx,tImg,0,0,w,imgH,0.55);
     grad(ctx,0,Math.round(imgH*.55),w,Math.round(imgH*.45),'b','rgba(31,49,95,0)',C.primary);
     ctx.restore();
   } else {ctx.fillStyle=C.primaryLight;ctx.fillRect(0,0,w,imgH);}
   ctx.fillStyle=C.primary; ctx.fillRect(0,imgH,w,h-imgH);
   ctx.fillStyle=C.green; ctx.fillRect(0,imgH,w,Math.max(3,Math.round(h*.004)));
+
   const p=Math.round(w*.062);
-  const panH=h-imgH;
+  // Veľkosti fontov: max(w-relatívne, h-relatívne) – pri 160px preváži výška
+  const logoH  = Math.max(Math.round(w*.16),  Math.round(h*.055));
+  const destFs = Math.max(Math.round(w*.082), Math.round(h*.030));
+  const ctaFs  = Math.max(Math.round(w*.080), Math.round(h*.030));
+  const maxNFs = Math.max(Math.round(w*(w<200?.10:.095)), Math.round(h*.038));
+  const minNFs = Math.max(8, Math.round(h*.020));
+  const webFs  = Math.max(Math.round(w*.067), Math.round(h*.024));
+
   // Logo
-  const logoH=Math.round(w*.16);
-  const logoY=imgH+Math.round(p*.85);
-  drawLogo(ctx,lImg,p,logoY,w-p*2,logoH);
+  const logoW = Math.min(Math.round(logoH*4.5), w-p*2);
+  const logoY = imgH+Math.round(p*.85);
+  drawLogo(ctx,lImg,p,logoY,logoW,logoH);
   let ty=logoY+logoH+Math.round(p*.6);
+
   // Destinácia
-  const destFs=Math.round(w*.082);
   ctx.font=`300 ${destFs}px Ubuntu,Arial`; ctx.fillStyle=C.greenLight; ctx.textBaseline='top';
   ctx.fillText(ellipsis(ctx,tour.dest.toUpperCase(),w-p*2),p,ty); ty+=Math.round(destFs*1.3);
+
   // Rezervuj priestor zdola: web + cena + CTA + separator
-  const webH   = Math.round(p*1.3);
-  const priceH = tour.minPrice ? Math.round(w*.145)+Math.round(p*.4) : 0;
-  const ctaH   = Math.round(h*.068);
-  const sepH   = Math.round(p*.5)+2;
-  const reserved = webH+priceH+ctaH+sepH+Math.round(p*1.5);
+  const ctaH    = Math.round(h*.068);
+  const priceFs0= Math.max(Math.round(w*.130), Math.round(h*.055));
+  const priceH  = tour.minPrice ? Math.round(priceFs0*1.3)+Math.round(p*.4) : 0;
+  const webH    = Math.round(webFs*1.5);
+  const sepH    = Math.round(p*.5)+2;
+  const reserved= webH+priceH+ctaH+sepH+Math.round(p*1.5);
+
   // Názov: AUTO-FIT do zostávajúceho priestoru, max 3 riadky
   const nameMaxH = h - reserved - ty;
   const maxLines = 3;
-  const maxNameFs = Math.round(w*(w<200?.10:.095));
-  const minNameFs = Math.max(8, Math.round(w*.055));
-  let nameFs = minNameFs;
-  for(let fs=maxNameFs; fs>=minNameFs; fs--){
+  let nameFs = minNFs;
+  for(let fs=maxNFs; fs>=minNFs; fs--){
     ctx.font=`bold ${fs}px Ubuntu,Arial`;
     const words=tour.name.split(' '); let lines=0, line='';
     for(const wd of words){
@@ -1434,22 +1445,27 @@ function drawSkyscraper(ctx,w,h,tour,tImg,lImg){
   ctx.font=`bold ${nameFs}px Ubuntu,Arial`; ctx.fillStyle=C.white; ctx.textBaseline='top';
   const nl2=wrap(ctx,tour.name,p,ty,w-p*2,Math.round(nameFs*1.25),maxLines);
   ty+=nl2+Math.round(p*.4);
+
   // Separator
   ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(p,ty,w-p*2,1); ty+=Math.round(p*.5)+1;
+
   // CTA
   rr(ctx,p,ty,w-p*2,ctaH,ctaH/2,C.green);
-  ctx.font=`bold ${Math.round(w*.080)}px Ubuntu,Arial`; ctx.fillStyle=C.white;
+  ctx.font=`bold ${ctaFs}px Ubuntu,Arial`; ctx.fillStyle=C.white;
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Viac info ›',w/2,ty+ctaH/2);
   ctx.textAlign='left'; ty+=ctaH+Math.round(p*.45);
+
   // Cena
   if(tour.minPrice&&ty<h-webH-p){
-    const priceFs=Math.min(Math.round(w*.130),Math.round((h-ty-webH-p)*.80));
+    const priceFs=Math.min(priceFs0,Math.round((h-ty-webH-p)*.80));
     ctx.font=`bold ${priceFs}px Ubuntu,Arial`; ctx.fillStyle=C.green;
     ctx.textBaseline='top'; ctx.textAlign='center';
     ctx.fillText(`od ${Math.round(tour.minPrice)} €`,w/2,ty);
     ctx.textAlign='left';
   }
-  ctx.font=`${Math.round(w*.067)}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.33)';
+
+  // Web
+  ctx.font=`${webFs}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.33)';
   ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText('ckdaka.sk',w/2,h-Math.round(p*.3));
   ctx.textAlign='left';
 }
