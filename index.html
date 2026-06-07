@@ -208,6 +208,86 @@ details[open].batch-wrap summary::before{transform:rotate(90deg)}
 .sty-btn:hover{border-color:var(--primary);box-shadow:0 2px 8px rgba(31,49,95,.14)}
 .sty-btn.on{background:var(--primary);border-color:var(--primary);color:#fff;
   box-shadow:0 3px 12px rgba(31,49,95,.28)}
+
+/* ── MOBILE TOGGLE BUTTON (skryté na desktope) ── */
+#sb-toggle{display:none}
+
+/* ══════════════════════════════════════
+   MOBILE RESPONSIVE  (max 768px)
+   Desktop layout sa NEMENÍ
+══════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Header */
+  #hdr{padding:0 14px;height:52px;gap:10px}
+  #hdr img{height:30px}
+  #hdr h1{font-size:13px;display:none} /* skryť na veľmi úzkom */
+  #status{display:none}
+  #sb-toggle{
+    display:flex;align-items:center;gap:6px;
+    margin-left:auto;
+    padding:7px 13px;border-radius:8px;border:1px solid rgba(255,255,255,.3);
+    background:rgba(255,255,255,.12);color:#fff;
+    font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;
+    white-space:nowrap;
+  }
+
+  /* Layout: stĺpec namiesto riadku */
+  #layout{
+    flex-direction:column;
+    height:auto;
+    overflow:visible;
+  }
+  body{overflow-y:auto}
+
+  /* Sidebar: plná šírka, zatvárateľný */
+  #sb{
+    width:100%;min-width:0;
+    max-height:55vh;
+    overflow:hidden;
+    transition:max-height .3s ease;
+  }
+  #sb.sb-closed{max-height:0}
+
+  /* Zoznam zájazdov vo vnútri má scroll */
+  #tl{max-height:35vh}
+
+  /* Main: plná šírka, normálny scroll */
+  #main{
+    overflow-y:visible;
+    padding:12px;
+    gap:12px;
+  }
+  .pnl{padding:14px}
+
+  /* Formáty – menšie bunky */
+  .fgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+  .fi{padding:8px 9px;gap:7px}
+  .fi-name{font-size:11px}
+  .fi-sz{font-size:10px}
+
+  /* Platform tabs – scrollovateľné vodorovne */
+  .ptabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
+  .ptab{white-space:nowrap;padding:8px 12px;font-size:11px}
+
+  /* Akčné tlačidlá – väčšie pre dotyk */
+  .btn{padding:13px 18px;font-size:14px}
+  .abar{gap:8px}
+  .fmt-sel{font-size:12px;padding:8px 10px;height:40px}
+
+  /* Náhľad bannerov – jeden stĺpec */
+  #pgrid{grid-template-columns:1fr}
+  .pc-img img{max-height:280px}
+
+  /* Modal – plná šírka na mobile */
+  #modal-box{min-width:0;width:100vw;max-width:100vw;border-radius:0;max-height:100vh}
+  #modal-hd{flex-wrap:wrap;gap:5px;padding:9px 12px}
+  #modal-hd .mdim{display:none}
+
+  /* Fmeta tlačidlá – skrátiť */
+  .fmeta{gap:5px}
+  .fmeta button{padding:6px 10px;font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -242,6 +322,7 @@ details[open].batch-wrap summary::before{transform:rotate(90deg)}
   <span id="logo-txt" style="display:none;font-size:20px;font-weight:700;color:#fff;letter-spacing:1px">CK DAKA</span>
   <h1>Generátor reklamných bannerov</h1>
   <div id="status"><div class="spin" id="spin"></div><span id="st">Načítavam zájazdy…</span></div>
+  <button id="sb-toggle" onclick="toggleSb()" aria-label="Zájazdy">☰ Zájazdy</button>
 </div>
 
 <div id="layout">
@@ -2132,6 +2213,14 @@ function checkAuth() {
     ol.style.display = 'flex';
     setTimeout(() => document.getElementById('login-pw').focus(), 100);
   }
+}
+
+// ── Mobile sidebar toggle ──
+function toggleSb() {
+  const sb  = document.getElementById('sb');
+  const btn = document.getElementById('sb-toggle');
+  const closed = sb.classList.toggle('sb-closed');
+  btn.textContent = closed ? '☰ Zájazdy' : '✕ Skryť';
 }
 
 // ── Start ──
