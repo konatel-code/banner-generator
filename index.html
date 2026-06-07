@@ -719,22 +719,27 @@ function imgCategory(w, h) {
 
 // Vyberie najlepší obrázok PER kategória – skóruje obrázky raz, ale hodnotí aspect-ratio bonus
 async function autoSelectBestImgAllAspects(tour) {
+  // Cache – obrázky sa hodnotia len raz za session
+  if (tour._aspectImgs) return tour._aspectImgs;
+
   const fallback = tour.imgUrl || tour.imgs?.[0] || null;
   const same = { portrait: fallback, landscape: fallback, strip: fallback };
-  if (!tour.imgs || tour.imgs.length <= 1) return same;
+  if (!tour.imgs || tour.imgs.length <= 1) { tour._aspectImgs = same; return same; }
+
   const limit = Math.min(tour.imgs.length, 12);
-  const results = [];
-  for (let i = 0; i < limit; i++) {
-    const url = tour.imgs[i];
-    const score = await scoreImg(url);
-    // Zisti pomer strán obrázka (browser cache – žiaden extra sieťový request)
-    let ratio = 1.5;
-    try {
-      const img = await loadImg(PROXY + encodeURIComponent(url));
-      ratio = (img.naturalWidth || img.width) / (img.naturalHeight || img.height || 1);
-    } catch {}
-    results.push({ url, score, ratio });
-  }
+  // Paralelné načítanie všetkých obrázkov naraz (nie sequential)
+  const results = await Promise.all(
+    tour.imgs.slice(0, limit).map(async url => {
+      const [score, img] = await Promise.all([
+        scoreImg(url),
+        loadImg(imgProxyUrl(url)).catch(() => null),
+      ]);
+      const ratio = img
+        ? (img.naturalWidth || img.width) / (img.naturalHeight || img.height || 1)
+        : 1.5;
+      return { url, score, ratio };
+    })
+  );
   const valid = results.filter(r => r.score >= 0);
   if (!valid.length) return same;
 
@@ -752,7 +757,9 @@ async function autoSelectBestImgAllAspects(tour) {
       return (!acc || s > acc.s) ? { url: r.url, s } : acc;
     }, null)?.url || valid[0].url;
   }
-  return { portrait: best('portrait'), landscape: best('landscape'), strip: best('strip') };
+  const res = { portrait: best('portrait'), landscape: best('landscape'), strip: best('strip') };
+  tour._aspectImgs = res; // uloží do cache – pri ďalšom volaní sa preskočí
+  return res;
 }
 
 // Spätná kompatibilita (používa sa v triggerAutoSelect)
