@@ -591,8 +591,8 @@ async function loadTours() {
   setSt('Načítavam zájazdy…', true);
   try {
     let text;
-    // Na Netlify skús najprv /xml-feed (rovnaká doména → žiadny CORS, _redirects to proxuje)
-    if (_isNetlify) {
+    // Na Netlify / banner.ckdaka.sk skús najprv /xml-feed (rovnaká doména → žiadny CORS)
+    if (_isNetlify || _isCkdaka) {
       try {
         const r = await fetch('/xml-feed');
         if (r.ok) text = await r.text();
