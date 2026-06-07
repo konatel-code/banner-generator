@@ -328,11 +328,25 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 // ── Proxy detekcia ──
 const _isLocal   = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 const _isNetlify = location.hostname.endsWith('.netlify.app') || location.hostname.endsWith('.netlify.com');
+const _isCkdaka  = location.hostname === 'banner.ckdaka.sk';
 
 // Proxy URL podľa prostredia
 let PROXY = _isLocal  ? '/proxy?url='
-          : _isNetlify ? '/.netlify/functions/proxy?url='  // priamo bez redirect
+          : (_isNetlify || _isCkdaka) ? '/.netlify/functions/proxy?url='
           : null;
+
+// Základná doména pre obrázky zo zájazdu
+const IMG_ORIGIN = 'https://cestovnakancelariadaka.sk';
+
+// Pre obrázky z IMG_ORIGIN použije /img-proxy/* (rovnaká doména, bez CORS)
+// Pre ostatné URL použije štandardný PROXY
+function imgProxyUrl(url) {
+  if (!url) return url;
+  if ((_isNetlify || _isCkdaka || _isLocal) && url.startsWith(IMG_ORIGIN)) {
+    return '/img-proxy' + url.slice(IMG_ORIGIN.length);
+  }
+  return PROXY ? PROXY + encodeURIComponent(url) : url;
+}
 
 // Otestuje dostupné proxy a nastaví prvý funkčný
 async function initProxy() {
@@ -458,7 +472,7 @@ function batchSelect() {
               strip = document.createElement('div');
               strip.className='ti-imgs'; strip.id='ti-imgs-'+bestTour.id;
               strip.innerHTML = bestTour.imgs.map(url =>
-                `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${PROXY+encodeURIComponent(url)}"
+                `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${imgProxyUrl(url)}"
                  data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
                  onclick="selectImg('${esc(bestTour.id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`
               ).join('');
@@ -489,7 +503,7 @@ async function init() {
 }
 
 async function loadLogo() {
-  try { logoImg = await loadImg(PROXY + encodeURIComponent(LOGO_URL)); } catch {}
+  try { logoImg = await loadImg(imgProxyUrl(LOGO_URL)); } catch {}
   if (!logoImg) { try { logoImg = await loadImg(LOGO_URL); } catch {} }
 }
 
@@ -599,7 +613,7 @@ function renderList(list) {
     const activeUrl = tourImgUrl(t);
     const thumbsHtml = (sel && t.imgs && t.imgs.length > 1)
       ? `<div class="ti-imgs" id="ti-imgs-${esc(t.id)}">` +
-        t.imgs.map(url => `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${PROXY+encodeURIComponent(url)}"
+        t.imgs.map(url => `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${imgProxyUrl(url)}"
           data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
           onclick="selectImg('${esc(t.id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`).join('') +
         `</div>`
@@ -806,7 +820,7 @@ function toggleTour(id, e) {
         strip = document.createElement('div');
         strip.className = 'ti-imgs'; strip.id = 'ti-imgs-' + id;
         strip.innerHTML = tour.imgs.map(url =>
-          `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${PROXY+encodeURIComponent(url)}"
+          `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${imgProxyUrl(url)}"
            data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
            onclick="selectImg('${esc(id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`
         ).join('');

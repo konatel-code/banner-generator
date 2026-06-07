@@ -1,2 +1,3 @@
-/xml-feed  https://cestovnakancelariadaka.sk/export/cesys  200
-/proxy  /.netlify/functions/proxy  200
+/xml-feed     https://cestovnakancelariadaka.sk/export/cesys  200
+/img-proxy/*  https://cestovnakancelariadaka.sk/:splat        200
+/proxy        /.netlify/functions/proxy                       200
