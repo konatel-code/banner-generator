@@ -1340,6 +1340,22 @@ function ts(ctx){ ctx.shadowColor='rgba(0,0,0,.72)'; ctx.shadowBlur=5; ctx.shado
 function tc(ctx){ ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0; }
 
 // ── Logo: biela pill + logo v originálnych farbách ── vracia skutočnú šírku
+// Vypočíta skutočnú šírku logo-boxu bez kreslenia (potrebné pre presné zarovnanie)
+function measureLogo(lImg, maxW, maxH) {
+  const vpad = Math.round(maxH * 0.15), hpad = Math.round(maxH * 0.28);
+  if (!lImg) {
+    return Math.min(maxW, maxH * 3.5);
+  }
+  const ratio = lImg.width / lImg.height;
+  const innerH = maxH - vpad * 2;
+  let lw = Math.min(maxW - hpad * 2, ratio * innerH);
+  if (lw < 1) lw = 1;
+  let lh = lw / ratio;
+  if (lh > innerH) { lh = innerH; lw = lh * ratio; }
+  return Math.min(Math.ceil(lw + hpad * 2), maxW);
+}
+
+// Nakreslí logo a vráti skutočnú šírku boxu
 function drawLogo(ctx, lImg, x, y, maxW, maxH) {
   const vpad = Math.round(maxH * 0.15), hpad = Math.round(maxH * 0.28);
   if (!lImg) {
@@ -1364,6 +1380,29 @@ function drawLogo(ctx, lImg, x, y, maxW, maxH) {
   rr(ctx, x, y, totalW, Math.ceil(lh + vpad * 2), Math.ceil((lh + vpad * 2) * 0.2), C.white);
   ctx.drawImage(lImg, x + hpad, y + vpad, lw, lh);
   return totalW;
+}
+
+// Pomocné funkcie pre zarovnanie loga:
+// Vpravo hore – presná medzera p z prava aj zhora
+function drawLogoTopRight(ctx, lImg, w, p, maxH) {
+  const maxW = Math.min(Math.round(maxH * 5), w - p * 2);
+  const nw   = measureLogo(lImg, maxW, maxH);
+  drawLogo(ctx, lImg, w - p - nw, p, maxW, maxH);
+  return nw;
+}
+// Vycentrované horizontálne – presne na stred (rovnaká medzera z prava aj z ľava)
+function drawLogoCentered(ctx, lImg, w, y, maxH) {
+  const maxW = Math.min(Math.round(maxH * 5), w);
+  const nw   = measureLogo(lImg, maxW, maxH);
+  drawLogo(ctx, lImg, Math.round((w - nw) / 2), y, maxW, maxH);
+  return nw;
+}
+// Vpravo hore v oblasti fotky (landscape split) – vpravo od ľavej hrany po wave
+function drawLogoTopRightInPhoto(ctx, lImg, photoW, p, maxH) {
+  const maxW = Math.min(Math.round(maxH * 5), photoW - p * 2);
+  const nw   = measureLogo(lImg, maxW, maxH);
+  drawLogo(ctx, lImg, photoW - p - nw, p, maxW, maxH);
+  return nw;
 }
 
 // ── Templates ── (prísne sekcie, žiadne prekrývanie)
@@ -1440,10 +1479,9 @@ function drawHorizontal(ctx,w,h,tour,tImg,lImg){
   ctx.textAlign='left';
   // ── Horná zóna: logo + dest + názov ──
   const topZoneBot = priceZoneTop - p;
-  // Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  // Logo: vpravo hore – presná rovnaká medzera zhora aj zprava
   const logoH=Math.round(h*.22);
-  const logoMaxW=Math.min(Math.round(logoH*4.5), Math.round(w*.45));
-  drawLogo(ctx,lImg,w-p-logoMaxW,p,logoMaxW,logoH);
+  drawLogoTopRight(ctx,lImg,w,p,logoH);
   let ty=p+logoH+Math.round(p*.55);
   // Destinácia
   const destFs=Math.round(h*.11);
@@ -1479,10 +1517,9 @@ function drawLandscape(ctx,w,h,tour,tImg,lImg){
   grad(ctx,0,h*.22,w,h*.78,'b','rgba(12,20,50,0)','rgba(12,20,50,.98)');
   grad(ctx,0,0,w,h*.25,'t','rgba(0,0,0,.6)','rgba(0,0,0,0)');
   const p=Math.round(w*.033);
-  // Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  // Logo: vpravo hore – presná rovnaká medzera zhora aj zprava
   const logoH=Math.round(h*.135);
-  const logoMaxW=Math.min(Math.round(logoH*4.5),w-p*2);
-  drawLogo(ctx,lImg,w-p-logoMaxW,p,logoMaxW,logoH);
+  drawLogoTopRight(ctx,lImg,w,p,logoH);
   // Všetko od dna nahor
   const bot=h-p;
   ctx.font=`${Math.round(h*.027)}px Ubuntu,Arial`; ctx.fillStyle='rgba(255,255,255,.38)';
@@ -1543,10 +1580,9 @@ function drawSquare(ctx,w,h,tour,tImg,lImg){
   ctx.fillStyle=C.primary; ctx.fillRect(0,imgH,w,h-imgH);
   ctx.fillStyle=C.green; ctx.fillRect(0,imgH,w,Math.max(3,Math.round(h*.005)));
   const p=Math.round(w*.05);
-  // Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  // Logo: vpravo hore – presná rovnaká medzera zhora aj zprava
   const logoH=Math.round(imgH*.22);
-  const logoMaxW=Math.min(Math.round(logoH*4.5),w-p*2);
-  drawLogo(ctx,lImg,w-p-logoMaxW,p,logoMaxW,logoH);
+  drawLogoTopRight(ctx,lImg,w,p,logoH);
   // Zľava badge: vľavo hore (aby nekonflikovalo s logom)
   if(tour.maxDiscount>0){
     const dbadgeFs=Math.round(w*.058);
@@ -1606,10 +1642,9 @@ function drawSkyscraper(ctx,w,h,tour,tImg,lImg){
   const minNFs = Math.max(8, Math.round(h*.020));
   const webFs  = Math.max(Math.round(w*.067), Math.round(h*.024));
 
-  // Logo: vycentrované – rovnaká medzera z prava aj z ľava
-  const logoW = Math.min(Math.round(logoH*4.5), w-p*2);
+  // Logo: vycentrované – presne na stred, rovnaká medzera z prava aj z ľava
   const logoY = imgH+Math.round(p*.85);
-  drawLogo(ctx,lImg,Math.round((w-logoW)/2),logoY,logoW,logoH);
+  drawLogoCentered(ctx,lImg,w,logoY,logoH);
   let ty=logoY+logoH+Math.round(p*.6);
 
   // Destinácia
@@ -1674,10 +1709,9 @@ function drawStory(ctx,w,h,tour,tImg,lImg){
   grad(ctx,0,0,w,h*.26,'t','rgba(20,32,72,.9)','rgba(0,0,0,0)');
   grad(ctx,0,h*.44,w,h*.56,'b','rgba(0,0,0,0)','rgba(15,25,55,.98)');
   const p=Math.round(w*.07);
-  // ── TOP: logo centrovaný – rovnaká medzera z prava aj z ľava ──
+  // ── TOP: logo centrovaný – presne na stred, rovnaká medzera z prava aj z ľava ──
   const logoH=Math.round(h*.07);
-  const logoW=Math.min(Math.round(logoH*5),w-p*2);
-  drawLogo(ctx,lImg,Math.round((w-logoW)/2),Math.round(p*.9),logoW,logoH);
+  drawLogoCentered(ctx,lImg,w,Math.round(p*.9),logoH);
   // ── BOTTOM: pevné sekcie od dna ──
   const bot=h-p;
   // Web (najnižšie)
@@ -1904,10 +1938,9 @@ function drawLightPortrait(ctx, w, h, tour, tImg, lImg) {
   // 3. Biely panel s vlnkou
   drawWhitePanel(ctx, w, h, splitY, amp);
 
-  // 4. Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  // 4. Logo: vpravo hore – presná rovnaká medzera zhora aj zprava
   const logoH = Math.round(h * (h > 900 ? 0.072 : 0.115));
-  const logoW = Math.min(Math.round(logoH * 4.5), w - p * 2);
-  drawLogo(ctx, lImg, w - p - logoW, p, logoW, logoH);
+  drawLogoTopRight(ctx, lImg, w, p, logoH);
 
   // 5. Texty v bielom paneli
   const tp    = Math.round(w * 0.07);
@@ -1979,10 +2012,9 @@ function drawLightLandscape(ctx, w, h, tour, tImg, lImg) {
   }
   drawWhitePanelV(ctx, w, h, splitX, amp);
 
-  // Logo: vpravo hore v oblasti fotky – rovnaká medzera zhora aj zprava od vlnky
+  // Logo: vpravo hore v oblasti fotky – presná rovnaká medzera zhora aj od vlnky
   const logoH = Math.round(h * 0.22);
-  const logoMaxW = Math.min(Math.round(logoH * 4.5), splitX - p * 2);
-  drawLogo(ctx, lImg, splitX - p - logoMaxW, p, logoMaxW, logoH);
+  drawLogoTopRightInPhoto(ctx, lImg, splitX, p, logoH);
 
   // Texty vpravo – tx začína za dolinou vlnky (splitX + amp*0.3 + padding)
   const tx   = Math.round(splitX + amp*0.3 + w*0.018);
@@ -2109,10 +2141,9 @@ function drawLightStampPortrait(ctx, w, h, tour, tImg, lImg) {
   drawStampDividerV(ctx, h, 0, dotR);   // ľavý okraj
   drawStampDividerV(ctx, h, w, dotR);   // pravý okraj
 
-  // Logo: vpravo hore – rovnaká medzera zhora aj zprava
+  // Logo: vpravo hore – presná rovnaká medzera zhora aj zprava
   const logoH = Math.round(h * (h > 900 ? 0.072 : 0.115));
-  const logoW = Math.min(Math.round(logoH * 4.5), w - p * 2);
-  drawLogo(ctx, lImg, w - p - logoW, p, logoW, logoH);
+  drawLogoTopRight(ctx, lImg, w, p, logoH);
 
   // Text v bielom paneli
   const tp = Math.round(w * 0.07), maxW = w - tp * 2;
@@ -2170,10 +2201,9 @@ function drawLightStampLandscape(ctx, w, h, tour, tImg, lImg) {
   drawStampDividerV(ctx, h, 0, dotR);   // ľavý okraj
   drawStampDividerV(ctx, h, w, dotR);   // pravý okraj
 
-  // Logo na foto: vpravo hore – rovnaká medzera zhora aj zprava od vlnky
+  // Logo na foto: vpravo hore – presná rovnaká medzera zhora aj od vlnky
   const logoH = Math.round(h * 0.22);
-  const maxLogoW = Math.min(Math.round(logoH * 4.5), splitX - p * 2);
-  drawLogo(ctx, lImg, splitX - p - maxLogoW, p, maxLogoW, logoH);
+  drawLogoTopRightInPhoto(ctx, lImg, splitX, p, logoH);
 
   // Text: pravý panel
   const tx = splitX + dotR + Math.round(w * 0.025);
@@ -2259,36 +2289,51 @@ function toggleModalSize(w, h) {
   }
 }
 
-// ── Prihlásenie ──
-const _PW_KEY  = 'ckdaka_bg_auth';
-const _PW_HASH = '7a9b3f2e1d8c4056'; // interný token uložený po správnom hesle
+// ── Prihlásenie – heslo overuje server, v zdrojovom kóde nie je žiadne heslo ──
+const _PW_KEY = 'ckdaka_bg_token';
 
-function _simpleHash(s) {
-  // Jednoduchá kontrola: porovná heslo priamo (uložené ako token v localStorage)
-  return s === '5CKDAKA5';
-}
-
-function doLogin() {
-  const val = document.getElementById('login-pw').value;
-  if (_simpleHash(val)) {
-    localStorage.setItem(_PW_KEY, _PW_HASH);
-    document.getElementById('login-overlay').style.display = 'none';
-    init();
-  } else {
-    document.getElementById('login-err').textContent = 'Nesprávne heslo';
-    document.getElementById('login-pw').focus();
+async function doLogin() {
+  const val = document.getElementById('login-pw').value.trim();
+  if (!val) return;
+  const btn = document.querySelector('#login-overlay button[onclick]');
+  if (btn) btn.disabled = true;
+  document.getElementById('login-err').textContent = '';
+  try {
+    const res = await fetch('/.netlify/functions/check-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: val }),
+    });
+    const data = await res.json();
+    if (data.ok && data.token) {
+      localStorage.setItem(_PW_KEY, data.token);
+      document.getElementById('login-overlay').style.display = 'none';
+      init();
+    } else {
+      document.getElementById('login-err').textContent = 'Nesprávne heslo';
+      document.getElementById('login-pw').select();
+    }
+  } catch {
+    document.getElementById('login-err').textContent = 'Chyba pripojenia, skúste znova';
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
-function checkAuth() {
-  if (localStorage.getItem(_PW_KEY) === _PW_HASH) {
-    // Už prihlásený
-    init();
-  } else {
-    const ol = document.getElementById('login-overlay');
-    ol.style.display = 'flex';
-    setTimeout(() => document.getElementById('login-pw').focus(), 100);
+async function checkAuth() {
+  const token = localStorage.getItem(_PW_KEY);
+  if (token) {
+    try {
+      const res = await fetch(`/.netlify/functions/verify-auth?token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+      if (data.ok) { init(); return; }
+    } catch {}
+    // Token neplatný alebo expiroval
+    localStorage.removeItem(_PW_KEY);
   }
+  const ol = document.getElementById('login-overlay');
+  ol.style.display = 'flex';
+  setTimeout(() => document.getElementById('login-pw').focus(), 100);
 }
 
 // ── Mobile sidebar toggle ──
