@@ -610,7 +610,7 @@ function batchSelect() {
             strip = document.createElement('div');
             strip.className = 'ti-imgs'; strip.id = 'ti-imgs-' + bestTour.id;
             strip.innerHTML = bestTour.imgs.map(url =>
-              `<img class="ti-thumb${url === activeUrl ? ' sel' : ''}" src="${imgProxyUrl(url)}"
+              `<img class="ti-thumb${url === activeUrl ? ' sel' : ''}" loading="lazy" src="${imgProxyUrl(url)}"
                data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
                onclick="selectImg('${esc(bestTour.id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`
             ).join('');
@@ -760,7 +760,7 @@ function renderList(list) {
     const activeUrl = tourImgUrl(t);
     const thumbsHtml = (sel && t.imgs && t.imgs.length > 1)
       ? `<div class="ti-imgs" id="ti-imgs-${esc(t.id)}">` +
-        t.imgs.map(url => `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${imgProxyUrl(url)}"
+        t.imgs.map(url => `<img class="ti-thumb${url===activeUrl?' sel':''}" loading="lazy" src="${imgProxyUrl(url)}"
           data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
           onclick="selectImg('${esc(t.id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`).join('') +
         `</div>`
@@ -768,7 +768,7 @@ function renderList(list) {
     return `<div class="ti${sel?' sel':''}" data-id="${esc(t.id)}">
       <div class="ti-row" onclick="toggleTour('${esc(t.id)}',event)">
         <input type="checkbox" ${sel?'checked':''} onclick="toggleTour('${esc(t.id)}',event)">
-        <img class="ti-main-img" src="${activeUrl?PROXY+encodeURIComponent(activeUrl):''}" alt="" onerror="this.style.opacity=.2">
+        <img class="ti-main-img" src="${activeUrl?imgProxyUrl(activeUrl):''}" alt="" loading="lazy" onerror="this.style.opacity=.2">
         <div class="ti-info">
           <div class="ti-name">${esc(t.name)}</div>
           <div class="ti-meta">
@@ -787,7 +787,7 @@ function selectImg(tourId, url, e) {
   if (e && e.stopPropagation) e.stopPropagation();
   tourImgSel.set(tourId, url);
   const mainImg = document.querySelector(`.ti[data-id="${tourId}"] .ti-main-img`);
-  if (mainImg) mainImg.src = PROXY + encodeURIComponent(url);
+  if (mainImg) mainImg.src = imgProxyUrl(url);
   const strip = document.getElementById('ti-imgs-' + tourId);
   if (strip) strip.querySelectorAll('.ti-thumb').forEach(img =>
     img.classList.toggle('sel', img.dataset.url === url));
@@ -798,9 +798,9 @@ function selectImg(tourId, url, e) {
 const _ac = document.createElement('canvas'); _ac.width = _ac.height = 64;
 const _ax = _ac.getContext('2d', {willReadFrequently: true});
 
-async function scoreImg(url) {
-  let img;
-  try { img = await loadImg(PROXY + encodeURIComponent(url)); } catch { return -1; }
+// Skóre vypočíta z UŽ NAČÍTANÉHO obrázka (žiadne ďalšie sťahovanie)
+function scoreImgFromImg(img, url) {
+  if (!img) return -1;
   _ax.clearRect(0, 0, 64, 64);
   imgCover(_ax, img, 0, 0, 64, 64, 0.5);
   const {data} = _ax.getImageData(0, 0, 64, 64);
@@ -874,13 +874,12 @@ async function autoSelectBestImgAllAspects(tour) {
   if (!tour.imgs || tour.imgs.length <= 1) { tour._aspectImgs = same; return same; }
 
   const limit = Math.min(tour.imgs.length, 12);
-  // Paralelné načítanie všetkých obrázkov naraz (nie sequential)
+  // Paralelné načítanie – KAŽDÝ obrázok sa stiahne len RAZ (cache),
+  // skóre aj pomer strán sa počítajú z toho istého načítaného obrázka.
   const results = await Promise.all(
     tour.imgs.slice(0, limit).map(async url => {
-      const [score, img] = await Promise.all([
-        scoreImg(url),
-        loadImg(imgProxyUrl(url)).catch(() => null),
-      ]);
+      const img = await loadImgCached(url);
+      const score = scoreImgFromImg(img, url);
       const ratio = img
         ? (img.naturalWidth || img.width) / (img.naturalHeight || img.height || 1)
         : 1.5;
@@ -931,7 +930,7 @@ function triggerAutoSelect(tourId) {
     tourImgSel.set(tourId, bestUrl);
     // Aktualizuj hlavný náhľad
     const mainImg = document.querySelector(`.ti[data-id="${tourId}"] .ti-main-img`);
-    if (mainImg) mainImg.src = PROXY + encodeURIComponent(bestUrl);
+    if (mainImg) mainImg.src = imgProxyUrl(bestUrl);
     // Aktualizuj thumby + označ auto-vybraný
     const s2 = document.getElementById('ti-imgs-' + tourId);
     if (s2) {
@@ -974,7 +973,7 @@ function toggleTour(id, e) {
         strip = document.createElement('div');
         strip.className = 'ti-imgs'; strip.id = 'ti-imgs-' + id;
         strip.innerHTML = tour.imgs.map(url =>
-          `<img class="ti-thumb${url===activeUrl?' sel':''}" src="${imgProxyUrl(url)}"
+          `<img class="ti-thumb${url===activeUrl?' sel':''}" loading="lazy" src="${imgProxyUrl(url)}"
            data-url="${esc(url)}" title="${esc(url.split('/').pop())}"
            onclick="selectImg('${esc(id)}','${esc(url)}',event)" onerror="this.style.opacity=.12">`
         ).join('');
@@ -1133,21 +1132,10 @@ async function generate() {
       aspectImgs = { portrait: url, landscape: url, strip: url };
     }
 
-    // Cache obrázkov (rovnaký URL sa načíta len raz)
-    const imgCache = new Map();
-    async function getTImg(url) {
-      if (!url) return null;
-      if (imgCache.has(url)) return imgCache.get(url);
-      let img = null;
-      try { img = await loadImg(PROXY + encodeURIComponent(url)); } catch {}
-      imgCache.set(url, img);
-      return img;
-    }
-
     for (const fmt of fmtList) {
       const cat    = imgCategory(fmt.w, fmt.h);
       const imgUrl = aspectImgs[cat] || tour.imgUrl || '';
-      const tImg   = await getTImg(imgUrl);
+      const tImg   = await loadImgCached(imgUrl);   // globálna cache – už načítané z auto-výberu
       const canvas = document.createElement('canvas');
       canvas.width = fmt.w; canvas.height = fmt.h;
       drawBanner(canvas.getContext('2d'), fmt.w, fmt.h, tour, tImg, logoImg);
@@ -2234,6 +2222,18 @@ function drawLightStampLandscape(ctx, w, h, tour, tImg, lImg) {
 
 // ── Helpers ──
 function loadImg(url){ return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=url; }); }
+
+// Globálna cache dekódovaných obrázkov – kľúčom je PÔVODNÁ URL.
+// Zdieľaná naprieč skórovaním, pomerom strán, generovaním aj náhľadmi.
+// Každý obrázok sa stiahne a dekóduje len RAZ za session (cez rýchly /img-proxy).
+const IMG_CACHE = new Map();   // url → Promise<Image|null>
+function loadImgCached(url){
+  if (!url) return Promise.resolve(null);
+  if (IMG_CACHE.has(url)) return IMG_CACHE.get(url);
+  const p = loadImg(imgProxyUrl(url)).catch(() => null);
+  IMG_CACHE.set(url, p);
+  return p;
+}
 function setSt(txt,loading){ document.getElementById('st').textContent=txt; document.getElementById('spin').style.display=loading?'block':'none'; }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
