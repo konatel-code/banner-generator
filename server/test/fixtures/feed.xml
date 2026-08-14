@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Testovací XML feed – kópia štruktúry exportu cesys v zmenšenej podobe.
+  __BASE__ nahradí test adresou lokálneho servera s obrázkami.
+-->
+<cesys>
+  <accommodation code="D1001" name="Slnečné pobrežie - Hotel Kaliakra 4* s dopravou do Bulharska">
+    <category>Pobytové zájazdy</category>
+    <country>Array</country>
+    <images>
+      <image url="__BASE__/photo-landscape.jpg" main="1"/>
+      <image url="__BASE__/photo-portrait.jpg"/>
+      <image url="__BASE__/icon-feature.jpg"/>
+    </images>
+    <description name="Popis">Hotel priamo pri pláži.</description>
+    <description name="Zľavy">25</description>
+    <dates>
+      <date date_from="2035-07-17" date_to="2035-07-26">
+        <nights>9</nights>
+        <final_price>729.50</final_price>
+      </date>
+      <date date_from="2035-08-07" date_to="2035-08-16">
+        <nights>9</nights>
+        <final_price>849.00</final_price>
+      </date>
+    </dates>
+  </accommodation>
+
+  <accommodation code="D1002" name="Fethiye – Perla Egejského mora s polpenziou">
+    <category>Poznávacie zájazdy</category>
+    <images>
+      <image url="__BASE__/photo-portrait.jpg" main="1"/>
+      <image url="__BASE__/photo-landscape.jpg"/>
+    </images>
+    <dates>
+      <date date_from="2035-09-03" date_to="2035-09-11">
+        <nights>8</nights>
+        <final_price>1099.00</final_price>
+      </date>
+    </dates>
+  </accommodation>
+
+  <accommodation code="D1003" name="Letecky na Cyprus - Hotel Anmaria s raňajkami">
+    <category>Pobytové zájazdy</category>
+    <images>
+      <image url="__BASE__/photo-landscape.jpg" main="1"/>
+    </images>
+    <description name="Zľavy">10</description>
+    <dates>
+      <date date_from="2035-06-01" date_to="2035-06-08">
+        <nights>7</nights>
+        <final_price>612.30</final_price>
+      </date>
+    </dates>
+  </accommodation>
+
+  <!-- Zájazd bez kódu sa musí ignorovať -->
+  <accommodation name="Neúplný záznam bez kódu">
+    <dates>
+      <date date_from="2035-06-01" date_to="2035-06-08"><final_price>100.00</final_price></date>
+    </dates>
+  </accommodation>
+</cesys>
