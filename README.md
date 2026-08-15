@@ -39,6 +39,12 @@ a pracuje len so zájazdmi, ktorým sa zmenila cena, termín alebo zľava.
 
 Detaily, endpointy a nasadenie: [`server/README.md`](server/README.md).
 
+## Nasadenie
+
+Krok za krokom, väčšina klikania sa dá odovzdať Claude in Chrome:
+[`docs/NASADENIE.md`](docs/NASADENIE.md). V koreni sú pripravené `railway.json`
+aj `fly.toml`, takže build netreba nastavovať ručne.
+
 ## Testy
 
 ```bash
