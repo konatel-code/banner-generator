@@ -155,18 +155,18 @@ test('stav si pamätá nahraté podklady medzi behmi', async () => {
 
   const first = await new UploadState(file, 'google-ads').load();
   assert.equal(first.isUploaded('A', hash), false);
-  first.record('A', { hash, resourceName: 'customers/1/assets/2', name: 'A' });
+  first.record('A', { hash, ref: 'customers/1/assets/2', name: 'A' });
   await first.save();
 
   const second = await new UploadState(file, 'google-ads').load();
   assert.equal(second.isUploaded('A', hash), true, 'stav sa nenačítal zo súboru');
-  assert.equal(second.get('A').resourceName, 'customers/1/assets/2');
+  assert.equal(second.get('A').ref, 'customers/1/assets/2');
 });
 
 test('zmena obsahu bannera si vynúti nové nahratie', async () => {
   const file = path.join(tmpDir, 'state2.json');
   const state = await new UploadState(file, 'google-ads').load();
-  state.record('A', { hash: contentHash(Buffer.from('cena 729')), resourceName: 'x', name: 'A' });
+  state.record('A', { hash: contentHash(Buffer.from('cena 729')), ref: 'x', name: 'A' });
 
   // Zmenila sa cena → iný obsah → iný hash → nahrať znova
   assert.equal(state.isUploaded('A', contentHash(Buffer.from('cena 849'))), false);
@@ -174,8 +174,8 @@ test('zmena obsahu bannera si vynúti nové nahratie', async () => {
 
 test('staleKeys nájde podklady, ktoré už v dávke nie sú', async () => {
   const state = await new UploadState(path.join(tmpDir, 'state3.json'), 'google-ads').load();
-  state.record('A', { hash: 'h', resourceName: 'x', name: 'A' });
-  state.record('B', { hash: 'h', resourceName: 'y', name: 'B' });
+  state.record('A', { hash: 'h', ref: 'x', name: 'A' });
+  state.record('B', { hash: 'h', ref: 'y', name: 'B' });
   assert.deepEqual(state.staleKeys(['A']), ['B']);
 });
 

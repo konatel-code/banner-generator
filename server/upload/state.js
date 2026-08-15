@@ -49,14 +49,20 @@ export class UploadState {
   /** Bol tento presný obsah pod týmto kľúčom už nahratý? */
   isUploaded(key, hash) {
     const rec = this.#assets()[key];
-    return !!rec && rec.hash === hash && !!rec.resourceName;
+    return !!rec && rec.hash === hash && !!rec.ref;
   }
 
   get(key) { return this.#assets()[key] || null; }
 
-  record(key, { hash, resourceName, name, meta }) {
+  /**
+   * @param {string} key názov podkladu
+   * @param {object} rec
+   * @param {string} rec.hash hash obsahu bannera
+   * @param {string} rec.ref  identifikátor v platforme – resourceName (Google Ads) alebo hash obrázka (Meta)
+   */
+  record(key, { hash, ref, name, meta }) {
     this.#assets()[key] = {
-      hash, resourceName, name,
+      hash, ref, name,
       uploadedAt: new Date().toISOString(),
       ...(meta ? { meta } : {}),
     };

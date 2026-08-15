@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 /**
- * Nahratie vygenerovaných bannerov do knižnice podkladov Google Ads.
+ * Nahratie vygenerovaných bannerov do reklamného účtu.
  *
- * Predvolene beží nasucho (--dry-run): vypíše, čo by nahral, a neodošle nič.
+ * Podporované ciele: Google Ads (knižnica podkladov) a Meta (knižnica
+ * obrázkov reklamného účtu). Nahrávajú sa len podklady – zostavenie reklám
+ * a kampaní zostáva na človeku.
+ *
+ * Predvolene beží nasucho: vypíše, čo by nahral, a neodošle nič.
  * Skutočné nahratie treba potvrdiť prepínačom --confirm.
  *
  * Nahráva sa len to, čo sa naozaj zmenilo – stav si pamätá hash obsahu
@@ -11,6 +15,7 @@
  *
  *   node upload.js --platform "Google Ads" --limit 20            # nasucho
  *   node upload.js --platform "Google Ads" --limit 20 --confirm  # naostro
+ *   node upload.js --target meta --sizes 1080x1080 --confirm
  *   node upload.js --list                                        # čo už je v účte
  */
 import path from 'node:path';
@@ -21,13 +26,38 @@ import { renderBanner } from './render.js';
 import { registerFonts } from './fonts.js';
 import { FORMATS, allSizes, sizeFromKey, STYLES } from '../shared/formats.js';
 import { GoogleAdsClient, credentialsFromEnv } from './upload/google-ads.js';
+import { MetaAdsClient, metaCredentialsFromEnv } from './upload/meta.js';
 import { UploadState, contentHash } from './upload/state.js';
 
-const HELP = `
-Nahratie bannerov do Google Ads
+export const TARGETS = {
+  'google-ads': {
+    label: 'Google Ads',
+    create: () => new GoogleAdsClient(credentialsFromEnv()),
+    upload: async (client, { buffer, name }) => {
+      const res = await client.uploadImageAsset({ buffer, name });
+      return { ref: res.resourceName, note: res.duplicate ? 'už existoval' : '' };
+    },
+    list: (client) => client.listImageAssets(),
+    describe: (a) => `${a.name}  ${a.resourceName}`,
+  },
+  'meta': {
+    label: 'Meta (Facebook / Instagram)',
+    create: () => new MetaAdsClient(metaCredentialsFromEnv()),
+    upload: async (client, { buffer, name }) => {
+      const res = await client.uploadImage({ buffer, name });
+      return { ref: res.hash, note: '' };
+    },
+    list: (client) => client.listImages(),
+    describe: (a) => `${a.name || '(bez názvu)'}  ${a.hash}`,
+  },
+};
 
+const HELP = `
+Nahratie bannerov do reklamného účtu
+
+  --target <cieľ>       ${Object.keys(TARGETS).join(' | ')} (predvolene google-ads)
   --confirm             skutočne nahrať (bez neho beží nasucho)
-  --list                vypísať obrázkové podklady, ktoré sú v účte
+  --list                vypísať obrázky, ktoré už v účte sú
   --platform <názov>    rozmery jednej platformy: ${Object.keys(FORMATS).join(', ')}
   --sizes <zoznam>      napr. 300x250,1200x628
   --style <štýl>        ${STYLES.join(' | ')} (predvolene ${config.defaultStyle})
@@ -39,9 +69,10 @@ Nahratie bannerov do Google Ads
   --help
 
 Prihlasovacie údaje sa čítajú z env premenných:
-  GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN,
-  GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID,
-  GOOGLE_ADS_LOGIN_CUSTOMER_ID (pri správe cez MCC)
+  Google Ads  GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN,
+              GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID,
+              GOOGLE_ADS_LOGIN_CUSTOMER_ID (pri správe cez MCC)
+  Meta        META_ACCESS_TOKEN, META_AD_ACCOUNT_ID
 `;
 
 function parseArgs(argv) {
@@ -109,11 +140,14 @@ async function main() {
   const confirm = args.confirm === 'true' || args.confirm === true;
   const stateFile = args.state || path.join(config.cacheDir, 'upload-state.json');
 
+  const targetKey = args.target || 'google-ads';
+  const target = TARGETS[targetKey];
+  if (!target) throw new Error(`Neznámy cieľ "${targetKey}". Možnosti: ${Object.keys(TARGETS).join(', ')}`);
+
   if (args.list) {
-    const client = new GoogleAdsClient(credentialsFromEnv());
-    const assets = await client.listImageAssets();
-    console.log(`[upload] v účte je ${assets.length} obrázkových podkladov`);
-    for (const a of assets.slice(0, 50)) console.log(`  ${a.name}  ${a.resourceName}`);
+    const assets = await target.list(target.create());
+    console.log(`[upload] ${target.label}: v účte je ${assets.length} obrázkov`);
+    for (const a of assets.slice(0, 50)) console.log(`  ${target.describe(a)}`);
     if (assets.length > 50) console.log(`  … a ďalších ${assets.length - 50}`);
     return;
   }
@@ -129,7 +163,7 @@ async function main() {
 
   // Prihlasovacie údaje overíme skôr, než začneme renderovať – nemá zmysel
   // kresliť stovky bannerov a až potom zistiť, že chýba token.
-  const client = confirm ? new GoogleAdsClient(credentialsFromEnv()) : null;
+  const client = confirm ? target.create() : null;
 
   const feed = await getFeed({ force: true });
   const today = new Date().toISOString().slice(0, 10);
@@ -141,8 +175,9 @@ async function main() {
   if (args.limit) tours = tours.slice(0, Number(args.limit));
 
   const plan = planUploads(tours, { sizes, style, terms, today });
-  const state = await new UploadState(stateFile, 'google-ads').load();
+  const state = await new UploadState(stateFile, targetKey).load();
 
+  console.log(`[upload] cieľ: ${target.label}`);
   console.log(`[upload] ${confirm ? 'NAOSTRO' : 'NASUCHO (bez --confirm sa nič neodošle)'}`);
   console.log(`[upload] ${plan.length} podkladov na kontrolu, stav: ${state.stats().count} už nahratých`);
 
@@ -172,15 +207,15 @@ async function main() {
     }
 
     try {
-      const res = await client.uploadImageAsset({ buffer, name: item.name });
+      const res = await target.upload(client, { buffer, name: item.name });
       state.record(item.name, {
         hash,
-        resourceName: res.resourceName,
+        ref: res.ref,
         name: item.name,
         meta: { code: item.tour.id, term: item.term, size: `${item.w}x${item.h}`, style: item.style },
       });
       uploaded++;
-      console.log(`  ✓ ${item.name} → ${res.resourceName}${res.duplicate ? ' (už existoval)' : ''}`);
+      console.log(`  ✓ ${item.name} → ${res.ref}${res.note ? ` (${res.note})` : ''}`);
       // Stav ukladáme priebežne, aby prerušený beh neprišiel o hotovú prácu
       if (uploaded % 10 === 0) await state.save();
     } catch (err) {
@@ -199,7 +234,7 @@ async function main() {
   );
   if (stale.length) {
     console.log(`[upload] ${stale.length} podkladov v stave už nie je v aktuálnej dávke ` +
-                `(prebehnuté termíny) – v Google Ads ostávajú, zmazať ich treba ručne`);
+                `(prebehnuté termíny) – v účte ostávajú, zmazať ich treba ručne`);
   }
   if (failed) process.exitCode = 1;
 }

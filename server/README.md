@@ -76,15 +76,17 @@ node generate.js --help
 Vedľa obrázkov vznikne `manifest.json` so zoznamom vygenerovaného – z neho bude
 čerpať nahrávač do reklamných platforiem (fáza 2).
 
-## Nahrávanie podkladov do Google Ads
+## Nahrávanie podkladov do reklamného účtu
 
 Feedy pokrývajú dynamické kampane. Pre klasické display kampane treba obrázky
-priamo v knižnici podkladov účtu – na to slúži `upload.js`.
+priamo v účte – na to slúži `upload.js`. Ciele: `google-ads` (predvolený)
+a `meta`.
 
 ```bash
 node upload.js --platform "Google Ads" --limit 20              # nasucho, nič sa neodošle
 node upload.js --platform "Google Ads" --limit 20 --confirm    # naostro
-node upload.js --list                                          # čo už v účte je
+node upload.js --target meta --sizes 1080x1080 --confirm       # Facebook / Instagram
+node upload.js --target meta --list                            # čo už v účte je
 node upload.js --help
 ```
 
@@ -96,7 +98,7 @@ Podklad, ktorý v účte už existuje, sa nepovažuje za chybu.
 Nahrávajú sa len obrázky. Zostavenie reklám a kampaní zostáva na človeku –
 automat dodá podklady, nie stratégiu.
 
-### Čo si treba vybaviť
+### Čo si treba vybaviť – Google Ads
 
 | Premenná | Odkiaľ |
 |---|---|
@@ -107,9 +109,20 @@ automat dodá podklady, nie stratégiu.
 | `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | ID MCC účtu, ak sa účet spravuje cezeň |
 | `GOOGLE_ADS_API_VERSION` | predvolene `v18`; Google verzie priebežne vypína |
 
-Rozhranie Google Ads API sa mení niekoľkokrát ročne. Pred prvým ostrým behom
-over verziu a názvy polí v aktuálnej dokumentácii – `--dry-run` (predvolený
-režim) ukáže presne to, čo by sa odoslalo.
+### Čo si treba vybaviť – Meta
+
+| Premenná | Odkiaľ |
+|---|---|
+| `META_ACCESS_TOKEN` | Business Manager → systémový používateľ → dlhodobý token s právom `ads_management` |
+| `META_AD_ACCOUNT_ID` | ID reklamného účtu (prefix `act_` sa doplní sám) |
+| `META_API_VERSION` | predvolene `v21.0` |
+
+Meta vráti pri nahratí `hash` obrázka – ten sa potom používa v reklamnom
+kreatíve. Rovnaký obrázok nahratý druhýkrát dostane rovnaký hash.
+
+Rozhrania oboch platforiem sa menia niekoľkokrát ročne. Pred prvým ostrým
+behom over verziu a názvy polí v aktuálnej dokumentácii – beh bez `--confirm`
+ukáže presne to, čo by sa odoslalo.
 
 ## Konfigurácia
 
@@ -165,10 +178,11 @@ Pri všetkých troch platí: adresa v `PUBLIC_URL` musí byť verejne dostupná
 
 ## Čo služba zatiaľ nerobí
 
-- **Meta Marketing API** – podklady do Facebooku a Instagramu sa zatiaľ
-  nenahrávajú cez API; pre dynamické kampane stačí katalógový feed vyššie.
-  Klient pre Meta je ďalší krok, štruktúra `upload/` s ním počíta.
 - **Nezostavuje reklamy ani kampane** – nahrá obrázky do knižnice podkladov,
   zvyšok ostáva na človeku.
 - **Nemaže staré podklady** – keď termín prebehne, `upload.js` na to upozorní,
   ale z účtu nič neodstraňuje.
+- **Nemá vlastný plánovač** – `upload.js` sa spúšťa cronom alebo plánovanou
+  úlohou; server sám od seba do účtov nezasahuje.
+- **Microsoft, TikTok a Pinterest** – zatiaľ len ako formáty bannerov,
+  bez nahrávania cez API. Štruktúra `upload/` s ďalšími cieľmi počíta.
