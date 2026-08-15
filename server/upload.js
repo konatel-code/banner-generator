@@ -20,21 +20,29 @@
  */
 import path from 'node:path';
 
-import { config, slugify } from './config.js';
+import { config, slugify, tourLink } from './config.js';
 import { getFeed } from './feed-store.js';
 import { renderBanner } from './render.js';
 import { registerFonts } from './fonts.js';
 import { FORMATS, allSizes, sizeFromKey, STYLES } from '../shared/formats.js';
 import { GoogleAdsClient, credentialsFromEnv } from './upload/google-ads.js';
 import { MetaAdsClient, metaCredentialsFromEnv } from './upload/meta.js';
+import { MicrosoftAdsClient, microsoftCredentialsFromEnv } from './upload/microsoft.js';
+import { TikTokAdsClient, tiktokCredentialsFromEnv } from './upload/tiktok.js';
+import { PinterestClient, pinterestCredentialsFromEnv } from './upload/pinterest.js';
 import { UploadState, contentHash } from './upload/state.js';
 
+/**
+ * Podporované ciele nahrávania. Každý dostane rovnaký kontext
+ * ({buffer, name, width, height, title, link, description}) a vráti
+ * identifikátor podkladu v danej platforme.
+ */
 export const TARGETS = {
   'google-ads': {
     label: 'Google Ads',
     create: () => new GoogleAdsClient(credentialsFromEnv()),
-    upload: async (client, { buffer, name }) => {
-      const res = await client.uploadImageAsset({ buffer, name });
+    upload: async (client, ctx) => {
+      const res = await client.uploadImageAsset(ctx);
       return { ref: res.resourceName, note: res.duplicate ? 'už existoval' : '' };
     },
     list: (client) => client.listImageAssets(),
@@ -43,12 +51,42 @@ export const TARGETS = {
   'meta': {
     label: 'Meta (Facebook / Instagram)',
     create: () => new MetaAdsClient(metaCredentialsFromEnv()),
-    upload: async (client, { buffer, name }) => {
-      const res = await client.uploadImage({ buffer, name });
+    upload: async (client, ctx) => {
+      const res = await client.uploadImage(ctx);
       return { ref: res.hash, note: '' };
     },
     list: (client) => client.listImages(),
     describe: (a) => `${a.name || '(bez názvu)'}  ${a.hash}`,
+  },
+  'microsoft': {
+    label: 'Microsoft Advertising',
+    create: () => new MicrosoftAdsClient(microsoftCredentialsFromEnv()),
+    upload: async (client, ctx) => {
+      const res = await client.uploadImage(ctx);
+      return { ref: res.mediaId, note: res.mediaType };
+    },
+    list: (client) => client.listImages(),
+    describe: (a) => `${a.name || '(bez názvu)'}  ${a.mediaId}`,
+  },
+  'tiktok': {
+    label: 'TikTok Ads',
+    create: () => new TikTokAdsClient(tiktokCredentialsFromEnv()),
+    upload: async (client, ctx) => {
+      const res = await client.uploadImage(ctx);
+      return { ref: res.imageId, note: '' };
+    },
+    list: (client) => client.listImages(),
+    describe: (a) => `${a.name || '(bez názvu)'}  ${a.imageId}`,
+  },
+  'pinterest': {
+    label: 'Pinterest',
+    create: () => new PinterestClient(pinterestCredentialsFromEnv()),
+    upload: async (client, ctx) => {
+      const res = await client.uploadImage(ctx);
+      return { ref: res.pinId, note: 'pin' };
+    },
+    list: (client) => client.listImages(),
+    describe: (a) => `${a.name || '(bez názvu)'}  ${a.pinId}`,
   },
 };
 
@@ -73,6 +111,10 @@ Prihlasovacie údaje sa čítajú z env premenných:
               GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID,
               GOOGLE_ADS_LOGIN_CUSTOMER_ID (pri správe cez MCC)
   Meta        META_ACCESS_TOKEN, META_AD_ACCOUNT_ID
+  Microsoft   MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_REFRESH_TOKEN,
+              MICROSOFT_DEVELOPER_TOKEN, MICROSOFT_ACCOUNT_ID, MICROSOFT_CUSTOMER_ID
+  TikTok      TIKTOK_ACCESS_TOKEN, TIKTOK_ADVERTISER_ID
+  Pinterest   PINTEREST_ACCESS_TOKEN, PINTEREST_BOARD_ID
 `;
 
 function parseArgs(argv) {
@@ -107,6 +149,23 @@ function resolveSizes(args) {
 export function assetName({ code, term, w, h, style }) {
   return ['DAKA', code, term ? term.replace(/-/g, '') : 'min', `${w}x${h}`, slugify(style)]
     .filter(Boolean).join('_');
+}
+
+/**
+ * Kontext jedného podkladu pre klienta platformy. Microsoft potrebuje rozmery
+ * (mapuje ich na typ média), Pinterest názov a odkaz (vytvára z bannera pin).
+ */
+export function uploadContext(item, buffer) {
+  const tour = item.tour || {};
+  return {
+    buffer,
+    name: item.name,
+    width: item.w,
+    height: item.h,
+    title: tour.name || item.name,
+    description: [tour.name, tour.dest].filter(Boolean).join(' – '),
+    link: tourLink(tour),
+  };
 }
 
 /** Zoznam podkladov na spracovanie – rovnaké filtre ako generate.js. */
@@ -207,7 +266,7 @@ async function main() {
     }
 
     try {
-      const res = await target.upload(client, { buffer, name: item.name });
+      const res = await target.upload(client, uploadContext(item, buffer));
       state.record(item.name, {
         hash,
         ref: res.ref,

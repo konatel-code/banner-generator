@@ -24,7 +24,7 @@ import { getFeed } from './feed-store.js';
 import { renderBanner } from './render.js';
 import { registerFonts } from './fonts.js';
 import { FEED_SIZES } from './feeds/items.js';
-import { TARGETS } from './upload.js';
+import { TARGETS, assetName, uploadContext } from './upload.js';
 import { UploadState, contentHash } from './upload/state.js';
 import { snapshotOf, diffSnapshots, readSnapshot, writeSnapshot, summarize } from './sync/snapshot.js';
 
@@ -142,15 +142,17 @@ export async function runOnce({
       }
 
       for (const key of uploadTargets) {
-        const name = ['DAKA', tour.id, term ? term.dateFrom.replace(/-/g, '') : 'min',
-                      `${size.w}x${size.h}`, style].join('_');
+        const name = assetName({
+          code: tour.id, term: term?.dateFrom, w: size.w, h: size.h, style,
+        });
         const hash = contentHash(buffer);
         if (states[key].isUploaded(name, hash)) continue;
 
         if (!confirm) { report.uploaded[key]++; continue; }   // len počítadlo, nič sa neodosiela
 
         try {
-          const res = await TARGETS[key].upload(clients[key], { buffer, name });
+          const item = { tour, term: term?.dateFrom || null, w: size.w, h: size.h, style, name };
+          const res = await TARGETS[key].upload(clients[key], uploadContext(item, buffer));
           states[key].record(name, {
             hash, ref: res.ref, name,
             meta: { code: tour.id, term: term?.dateFrom || null, size: `${size.w}x${size.h}`, style },

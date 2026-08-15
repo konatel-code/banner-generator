@@ -119,16 +119,32 @@ Plánovanie: buď `--watch` v samostatnom kontajneri, alebo cron:
 ## Nahrávanie podkladov do reklamného účtu
 
 Feedy pokrývajú dynamické kampane. Pre klasické display kampane treba obrázky
-priamo v účte – na to slúži `upload.js`. Ciele: `google-ads` (predvolený)
-a `meta`.
+priamo v účte – na to slúži `upload.js`.
+
+| Cieľ (`--target`) | Kam sa nahráva | Čo sa vráti |
+|---|---|---|
+| `google-ads` (predvolený) | knižnica podkladov účtu | `resourceName` |
+| `meta` | knižnica obrázkov reklamného účtu | `hash` obrázka |
+| `microsoft` | knižnica médií účtu (SOAP `AddMedia`) | `mediaId` |
+| `tiktok` | knižnica obrázkov inzerenta | `image_id` |
+| `pinterest` | pin na zvolenej nástenke | `pin_id` |
 
 ```bash
 node upload.js --platform "Google Ads" --limit 20              # nasucho, nič sa neodošle
 node upload.js --platform "Google Ads" --limit 20 --confirm    # naostro
 node upload.js --target meta --sizes 1080x1080 --confirm       # Facebook / Instagram
+node upload.js --target tiktok --sizes 1080x1920 --confirm     # TikTok
 node upload.js --target meta --list                            # čo už v účte je
 node upload.js --help
 ```
+
+Pinterest je iný ako ostatné: nemá knižnicu podkladov, jednotkou obsahu je pin
+na nástenke. Banner sa preto nahrá ako pin (s názvom a odkazom zo zájazdu),
+ktorý sa dá následne propagovať.
+
+Microsoft mapuje obrázky na typy podľa pomeru strán (`Image1x1`, `Image4x1`…).
+Presné rozmery bannerov sa na typy nemapujú jedna k jednej, preto sa vyberá
+najbližší pomer; natvrdo sa dá určiť cez `MICROSOFT_MEDIA_TYPE`.
 
 Bez `--confirm` beh len vypíše, čo by nahral. Nahráva sa výhradne to, čo sa
 zmenilo: stav v `<CACHE_DIR>/upload-state.json` si pamätá hash obsahu každého
@@ -159,6 +175,35 @@ automat dodá podklady, nie stratégiu.
 
 Meta vráti pri nahratí `hash` obrázka – ten sa potom používa v reklamnom
 kreatíve. Rovnaký obrázok nahratý druhýkrát dostane rovnaký hash.
+
+### Čo si treba vybaviť – Microsoft Advertising
+
+| Premenná | Odkiaľ |
+|---|---|
+| `MICROSOFT_DEVELOPER_TOKEN` | Microsoft Advertising → Nástroje → Developer Settings |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` | Azure Portal → App registrations |
+| `MICROSOFT_REFRESH_TOKEN` | jednorazovo cez consent flow, scope `https://ads.microsoft.com/msads.manage offline_access` |
+| `MICROSOFT_ACCOUNT_ID`, `MICROSOFT_CUSTOMER_ID` | ID účtu a zákazníka z rozhrania Microsoft Advertising |
+| `MICROSOFT_MEDIA_TYPE` | voliteľné – vynúti jeden typ média namiesto odvodenia z pomeru strán |
+
+### Čo si treba vybaviť – TikTok
+
+| Premenná | Odkiaľ |
+|---|---|
+| `TIKTOK_ACCESS_TOKEN` | TikTok for Business → Developers → aplikácia s právom `Ad Account Management` |
+| `TIKTOK_ADVERTISER_ID` | ID inzerenta |
+| `TIKTOK_API_VERSION` | predvolene `v1.3` |
+
+TikTok hlási chyby s HTTP 200 a nenulovým `code` v tele – klient to rozoznáva,
+takže neúspech sa neprehliadne.
+
+### Čo si treba vybaviť – Pinterest
+
+| Premenná | Odkiaľ |
+|---|---|
+| `PINTEREST_ACCESS_TOKEN` | Pinterest Developers → aplikácia s právom `pins:write` |
+| `PINTEREST_BOARD_ID` | ID nástenky, na ktorú sa piny vytvárajú |
+| `PINTEREST_DEFAULT_LINK` | voliteľné – odkaz, keď ho zájazd nemá |
 
 Rozhrania oboch platforiem sa menia niekoľkokrát ročne. Pred prvým ostrým
 behom over verziu a názvy polí v aktuálnej dokumentácii – beh bez `--confirm`
@@ -225,6 +270,7 @@ Pri všetkých troch platí: adresa v `PUBLIC_URL` musí byť verejne dostupná
   zvyšok ostáva na človeku.
 - **Nemaže staré podklady** – keď termín prebehne, `upload.js` na to upozorní,
   ale z účtu nič neodstraňuje.
-- **Microsoft, TikTok a Pinterest** – zatiaľ len ako formáty bannerov,
-  bez nahrávania cez API. Štruktúra `upload/` s ďalšími cieľmi počíta.
 - **Nespravuje rozpočty ani cielenie** – to zostáva v rukách človeka.
+- **Klienti nie sú overení proti ostrým účtom** – testy bežia proti lokálnym
+  mockom, takže sedí tvar požiadaviek, nie správanie konkrétneho účtu. Prvý
+  ostrý beh spusti bez `--confirm`.

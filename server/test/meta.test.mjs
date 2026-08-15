@@ -136,11 +136,8 @@ test('cieľ meta v upload.js vracia hash ako referenciu', async () => {
   assert.equal(res.ref, 'abc123hash');
 });
 
-test('oba ciele sú dostupné a majú popis', () => {
-  assert.deepEqual(Object.keys(TARGETS), ['google-ads', 'meta']);
-  for (const [key, t] of Object.entries(TARGETS)) {
-    assert.equal(typeof t.label, 'string', `${key}: chýba label`);
-    assert.equal(typeof t.upload, 'function', `${key}: chýba upload`);
-    assert.equal(typeof t.list, 'function', `${key}: chýba list`);
-  }
+test('cieľ meta je registrovaný spolu s ostatnými platformami', () => {
+  // Úplný zoznam cieľov a ich rozhranie kontroluje platforms.test.mjs
+  assert.ok(Object.keys(TARGETS).includes('meta'));
+  assert.equal(TARGETS['meta'].label, 'Meta (Facebook / Instagram)');
 });

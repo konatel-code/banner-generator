@@ -135,6 +135,6 @@ test('nahrávanie bez potvrdenia neodošle nič', async () => {
 
 test('neznámy cieľ nahrávania zlyhá hneď', async () => {
   await assert.rejects(
-    () => runOnce({ snapshotFile: path.join(tmpDir, 'run5.json'), uploadTargets: ['tiktok'], log: () => {} }),
-    /Neznámy cieľ "tiktok"/);
+    () => runOnce({ snapshotFile: path.join(tmpDir, 'run5.json'), uploadTargets: ['snapchat'], log: () => {} }),
+    /Neznámy cieľ "snapchat"/);
 });
