@@ -76,6 +76,46 @@ node generate.js --help
 Vedľa obrázkov vznikne `manifest.json` so zoznamom vygenerovaného – z neho bude
 čerpať nahrávač do reklamných platforiem (fáza 2).
 
+## Automatický beh
+
+`sync.js` je to, čo má bežať samo. Jeden cyklus stiahne feed, porovná ho
+s odtlačkom z minulého behu a pracuje **len so zmenenými zájazdmi**:
+
+```bash
+node sync.js                                  # jeden cyklus, len príprava obrázkov
+node sync.js --watch --interval 360           # každých 6 hodín
+node sync.js --upload google-ads,meta --confirm
+node sync.js --all                            # pregenerovať všetko
+```
+
+Ukážka dvoch behov za sebou:
+
+```
+[sync] feed 7ef95359ad38: 3 zájazdov – prvý beh, 3 zájazdov na spracovanie
+[sync] pregenerúvam 3 zájazdov × 3 rozmerov
+[sync] hotovo za 2s – 9 bannerov
+
+[sync] feed 7ef95359ad38: 3 zájazdov – žiadne zmeny
+[sync] niet čo pregenerovať
+```
+
+Rozpoznáva zmenu ceny, posun najbližšieho termínu, zmenu zľavy, nové zájazdy
+aj tie, ktoré z feedu zmizli. Predgenerovanie znamená, že keď si banner príde
+stiahnuť Google alebo Meta, je už v cache a odpoveď je okamžitá.
+
+Nahrávanie do účtov je vypnuté, kým sa nezapne `--upload` **a** `--confirm`.
+Odtlačok sa zapisuje až na konci behu, takže prerušený cyklus sa nabudúce
+zopakuje a nič sa nestratí.
+
+Po behu ostáva `<CACHE_DIR>/last-sync.json` so správou: koľko sa zmenilo,
+koľko sa vygenerovalo, koľko nahralo, ako dlho to trvalo.
+
+Plánovanie: buď `--watch` v samostatnom kontajneri, alebo cron:
+
+```
+0 5,17 * * *  cd /app/server && node sync.js --upload google-ads --confirm >> /var/log/ckdaka-sync.log 2>&1
+```
+
 ## Nahrávanie podkladov do reklamného účtu
 
 Feedy pokrývajú dynamické kampane. Pre klasické display kampane treba obrázky
@@ -155,6 +195,9 @@ docker run -p 3457:3457 \
   -e LINK_TEMPLATE='https://www.ckdaka.sk/zajazd/{slug}-{code}' \
   -v ckdaka-cache:/app/.cache \
   ckdaka-banner
+
+# Synchronizácia ako druhý proces nad tou istou cache
+docker run -v ckdaka-cache:/app/.cache ckdaka-banner node sync.js --watch --interval 360
 ```
 
 Netlify na to nestačí – funkcie majú krátky časový limit a render bannerov je
@@ -182,7 +225,6 @@ Pri všetkých troch platí: adresa v `PUBLIC_URL` musí byť verejne dostupná
   zvyšok ostáva na človeku.
 - **Nemaže staré podklady** – keď termín prebehne, `upload.js` na to upozorní,
   ale z účtu nič neodstraňuje.
-- **Nemá vlastný plánovač** – `upload.js` sa spúšťa cronom alebo plánovanou
-  úlohou; server sám od seba do účtov nezasahuje.
 - **Microsoft, TikTok a Pinterest** – zatiaľ len ako formáty bannerov,
   bez nahrávania cez API. Štruktúra `upload/` s ďalšími cieľmi počíta.
+- **Nespravuje rozpočty ani cielenie** – to zostáva v rukách človeka.

@@ -33,6 +33,10 @@ Generuje bannery na požiadanie na vlastných URL a vydáva produktové feedy, k
 si Google Ads, Merchant Center a Meta sťahujú samy – bannery sa teda nemusia
 generovať a nahrávať ručne. Pre klasické display kampane vie podklady nahrať aj
 priamo do účtu Google Ads či Meta (`node upload.js`, predvolene nasucho).
+
+O pravidelný chod sa stará `node sync.js --watch`: porovná feed s minulým behom
+a pracuje len so zájazdmi, ktorým sa zmenila cena, termín alebo zľava.
+
 Detaily, endpointy a nasadenie: [`server/README.md`](server/README.md).
 
 ## Testy
