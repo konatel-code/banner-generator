@@ -76,6 +76,41 @@ node generate.js --help
 Vedľa obrázkov vznikne `manifest.json` so zoznamom vygenerovaného – z neho bude
 čerpať nahrávač do reklamných platforiem (fáza 2).
 
+## Nahrávanie podkladov do Google Ads
+
+Feedy pokrývajú dynamické kampane. Pre klasické display kampane treba obrázky
+priamo v knižnici podkladov účtu – na to slúži `upload.js`.
+
+```bash
+node upload.js --platform "Google Ads" --limit 20              # nasucho, nič sa neodošle
+node upload.js --platform "Google Ads" --limit 20 --confirm    # naostro
+node upload.js --list                                          # čo už v účte je
+node upload.js --help
+```
+
+Bez `--confirm` beh len vypíše, čo by nahral. Nahráva sa výhradne to, čo sa
+zmenilo: stav v `<CACHE_DIR>/upload-state.json` si pamätá hash obsahu každého
+podkladu, takže druhý beh bez zmeny cien neurobí ani jedno volanie API.
+Podklad, ktorý v účte už existuje, sa nepovažuje za chybu.
+
+Nahrávajú sa len obrázky. Zostavenie reklám a kampaní zostáva na človeku –
+automat dodá podklady, nie stratégiu.
+
+### Čo si treba vybaviť
+
+| Premenná | Odkiaľ |
+|---|---|
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | Google Ads → Nástroje → API Center (schvaľuje Google, trvá to) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console → OAuth klient (typ Desktop) |
+| `GOOGLE_REFRESH_TOKEN` | jednorazovo cez OAuth consent flow, rozsah `https://www.googleapis.com/auth/adwords` |
+| `GOOGLE_ADS_CUSTOMER_ID` | ID účtu bez pomlčiek |
+| `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | ID MCC účtu, ak sa účet spravuje cezeň |
+| `GOOGLE_ADS_API_VERSION` | predvolene `v18`; Google verzie priebežne vypína |
+
+Rozhranie Google Ads API sa mení niekoľkokrát ročne. Pred prvým ostrým behom
+over verziu a názvy polí v aktuálnej dokumentácii – `--dry-run` (predvolený
+režim) ukáže presne to, čo by sa odoslalo.
+
 ## Konfigurácia
 
 Všetko cez env premenné, žiadne tajomstvá v kóde:
@@ -130,7 +165,10 @@ Pri všetkých troch platí: adresa v `PUBLIC_URL` musí byť verejne dostupná
 
 ## Čo služba zatiaľ nerobí
 
-Nenahráva podklady cez API priamo do kampaní (Google Ads API, Meta Marketing
-API). To je fáza 2 – vyžaduje developer token, OAuth a schvaľovanie zo strany
-platforiem. `manifest.json` z `generate.js` je pripravený ako vstup pre takýto
-nahrávač.
+- **Meta Marketing API** – podklady do Facebooku a Instagramu sa zatiaľ
+  nenahrávajú cez API; pre dynamické kampane stačí katalógový feed vyššie.
+  Klient pre Meta je ďalší krok, štruktúra `upload/` s ním počíta.
+- **Nezostavuje reklamy ani kampane** – nahrá obrázky do knižnice podkladov,
+  zvyšok ostáva na človeku.
+- **Nemaže staré podklady** – keď termín prebehne, `upload.js` na to upozorní,
+  ale z účtu nič neodstraňuje.

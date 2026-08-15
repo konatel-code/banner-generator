@@ -31,7 +31,9 @@ cd server && npm install && npm start     # http://localhost:3457
 
 Generuje bannery na požiadanie na vlastných URL a vydáva produktové feedy, ktoré
 si Google Ads, Merchant Center a Meta sťahujú samy – bannery sa teda nemusia
-generovať a nahrávať ručne. Detaily, endpointy a nasadenie: [`server/README.md`](server/README.md).
+generovať a nahrávať ručne. Pre klasické display kampane vie podklady nahrať aj
+priamo do knižnice Google Ads (`node upload.js`, predvolene nasucho).
+Detaily, endpointy a nasadenie: [`server/README.md`](server/README.md).
 
 ## Testy
 
