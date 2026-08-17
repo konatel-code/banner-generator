@@ -39,11 +39,10 @@ Rovnaké pravidlo platí pre `client secret` a refresh tokeny.
 | Účet na Railway (alebo Fly.io) | railway.app – dá sa prihlásiť cez GitHub |
 | Prístup správcu do Google Ads | ads.google.com |
 | Prístup do Meta Business Managera | business.facebook.com |
-| Adresu detailu zájazdu na webe | napr. `https://www.ckdaka.sk/zajazd/nazov-KOD` |
 
-**Poslednú položku potrebujem od teba.** Otvor na webe ľubovoľný zájazd
-a pozri sa, ako vyzerá adresa v riadku prehliadača. Podľa nej sa nastaví
-`LINK_TEMPLATE` – bez toho vedú odkazy vo feedoch len na úvodnú stránku.
+Odkaz na detail zájazdu riešiť netreba – feed ho má pri každom zájazde
+v tagu `<url>` a služba ho odtiaľ berie. Či to sedí, uvidíš v `/health`
+(položka `feed.links`) hneď po nasadení.
 
 ---
 
@@ -79,13 +78,14 @@ Do Variables pridaj:
 
 ```
 PUBLIC_URL     = https://<adresa-z-railway>
-LINK_TEMPLATE  = https://www.ckdaka.sk/zajazd/{slug}-{code}
 CACHE_DIR      = /data
 ```
 
 `PUBLIC_URL` musí byť presne tá adresa, na ktorej služba beží – vkladá sa do
-feedov ako odkaz na obrázky. `LINK_TEMPLATE` uprav podľa toho, čo si zistil
-vo fáze 0; `{code}` je kód zájazdu, `{slug}` názov v tvare pre URL.
+feedov ako odkaz na obrázky.
+
+`LINK_TEMPLATE` je nepovinná záloha pre prípad, že by niektorý zájazd vo feede
+odkaz nemal (`{code}` je kód zájazdu, `{slug}` názov v tvare pre URL).
 
 ### 1.4 Overiť, že služba žije
 
@@ -247,7 +247,9 @@ Najčastejšie problémy:
   stiahnuť XML. Skontroluj `/health`.
 - **Platforma nevie stiahnuť obrázok** – `PUBLIC_URL` nesedí s adresou, na
   ktorej služba beží, alebo nebeží na HTTPS.
-- **Odkazy vedú na úvodnú stránku** – nie je nastavený `LINK_TEMPLATE`.
+- **Odkazy vedú na úvodnú stránku** – vo feede chýba `<url>` a nie je
+  nastavený ani `LINK_TEMPLATE`. Koľkých zájazdov sa to týka, ukáže `/health`
+  v položke `feed.links.fromTemplate`.
 
 ---
 

@@ -60,7 +60,9 @@ export function slugify(s) {
 
 /** Odkaz na detail zájazdu – z feedu, zo šablóny, alebo aspoň na web. */
 export function tourLink(tour) {
-  if (tour.url) return tour.url;
+  const fromFeed = (tour.url || '').trim();
+  if (/^https?:\/\//i.test(fromFeed)) return fromFeed;
+  if (fromFeed.startsWith('/')) return config.siteUrl + fromFeed;   // feed dal len cestu
   if (config.linkTemplate) {
     return config.linkTemplate
       .replace(/\{code\}/g, encodeURIComponent(tour.id))

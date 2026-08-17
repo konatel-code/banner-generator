@@ -7,6 +7,11 @@
   <accommodation code="D1001" name="Slnečné pobrežie - Hotel Kaliakra 4* s dopravou do Bulharska">
     <category>Pobytové zájazdy</category>
     <country>Array</country>
+    <PRICELIST_INFO>
+      <!-- Vnorená <url> patrí cenníku, nie zájazdu – parser ju nesmie zobrať -->
+      <url>https://www.ckdaka.sk/cennik/D1001.pdf</url>
+    </PRICELIST_INFO>
+    <url>https://www.ckdaka.sk/zajazd/hotel-kaliakra-bulharsko-D1001</url>
     <images>
       <image url="__BASE__/photo-landscape.jpg" main="1"/>
       <image url="__BASE__/photo-portrait.jpg"/>
@@ -40,8 +45,10 @@
     </dates>
   </accommodation>
 
+  <!-- D1003 má odkaz len ako cestu bez domény a tag veľkými písmenami -->
   <accommodation code="D1003" name="Letecky na Cyprus - Hotel Anmaria s raňajkami">
     <category>Pobytové zájazdy</category>
+    <URL>/zajazd/hotel-anmaria-cyprus-D1003</URL>
     <images>
       <image url="__BASE__/photo-landscape.jpg" main="1"/>
     </images>

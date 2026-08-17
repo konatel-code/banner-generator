@@ -45,8 +45,18 @@ test('obrázok položky ukazuje na render endpoint s termínom', () => {
   assert.match(it.additionalImages[1], /1080x1920\.jpg/);
 });
 
-test('odkaz sa poskladá zo šablóny LINK_TEMPLATE', () => {
-  assert.equal(items[0].link, 'https://www.ckdaka.sk/zajazd/slnecne-pobrezie-hotel-kaliakra-4-s-dopravou-do-bulharska-D1001');
+test('odkaz z feedu má prednosť pred šablónou', () => {
+  assert.equal(items[0].link, 'https://www.ckdaka.sk/zajazd/hotel-kaliakra-bulharsko-D1001');
+});
+
+test('odkaz bez domény sa doplní o SITE_URL', () => {
+  const d1003 = items.find(i => i.itemGroupId === 'D1003');
+  assert.equal(d1003.link, 'https://www.ckdaka.sk/zajazd/hotel-anmaria-cyprus-D1003');
+});
+
+test('bez odkazu vo feede sa použije šablóna LINK_TEMPLATE', () => {
+  const d1002 = items.find(i => i.itemGroupId === 'D1002');
+  assert.equal(d1002.link, 'https://www.ckdaka.sk/zajazd/fethiye-perla-egejskeho-mora-s-polpenziou-D1002');
 });
 
 test('limit oreže počet položiek', () => {

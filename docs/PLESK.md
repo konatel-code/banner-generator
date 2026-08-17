@@ -98,7 +98,6 @@ V tej istej obrazovke (Node.js → Custom environment variables) pridaj:
 
 ```
 PUBLIC_URL      = https://banner.ckdaka.sk
-LINK_TEMPLATE   = https://www.ckdaka.sk/zajazd/{slug}-{code}
 CACHE_DIR       = /var/www/vhosts/ckdaka.sk/banner.ckdaka.sk/server/.cache
 BANNER_PASSWORD = <heslo do generátora>
 BANNER_SECRET   = <náhodný reťazec, aspoň 32 znakov>
@@ -107,8 +106,10 @@ BANNER_SECRET   = <náhodný reťazec, aspoň 32 znakov>
 `BANNER_PASSWORD` a `BANNER_SECRET` sú tie isté hodnoty, aké máš dnes
 v Netlify – ak ich necháš rovnaké, prihlasovacie heslo sa nezmení.
 
-`LINK_TEMPLATE` uprav podľa toho, ako vyzerá adresa detailu zájazdu na webe.
-Bez neho vedú odkazy vo feedoch len na úvodnú stránku.
+Odkazy na detail zájazdu berie služba z tagu `<url>` vo feede, takže sa
+nastavovať nemusia. Nepovinné zálohy pre prípad, že by odkaz niektorému
+zájazdu chýbal: `LINK_TEMPLATE` (napr.
+`https://www.ckdaka.sk/zajazd/{slug}-{code}`) a `SITE_URL`.
 
 Po uložení premenných klikni na **Restart App**.
 
@@ -121,11 +122,20 @@ Otvor `https://banner.ckdaka.sk/health`. Očakávaný výsledok:
 ```json
 {
   "ok": true,
-  "feed": { "tours": 250, "lastError": null },
+  "feed": {
+    "tours": 250,
+    "lastError": null,
+    "links": { "fromFeed": 250, "fromTemplate": 0, "example": "https://www.ckdaka.sk/zajazd/..." }
+  },
   "fonts": { "ok": true, "weights": ["400","500","700"] },
   "auth": "heslo"
 }
 ```
+
+V `feed.links` sa oplatí pozrieť dve veci: `fromFeed` má sedieť s počtom
+zájazdov (odkazy sa berú z tagu `<url>`) a `example` má byť skutočná adresa
+detailu zájazdu – klikni na ňu. Ak je `fromTemplate` väčšie ako nula, toľkým
+zájazdom odkaz vo feede chýba a doplní sa zo šablóny `LINK_TEMPLATE`.
 
 Potom skontroluj:
 

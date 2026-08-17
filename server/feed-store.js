@@ -8,7 +8,7 @@
 import crypto from 'node:crypto';
 import { DOMParser } from '@xmldom/xmldom';
 import { parseFeedDocument } from '../shared/feed.js';
-import { config } from './config.js';
+import { config, tourLink } from './config.js';
 
 let state = {
   tours: [],
@@ -95,11 +95,19 @@ export async function getTour(code) {
 }
 
 export function feedStatus() {
+  // Koľko zájazdov má odkaz priamo vo feede. Ak je to počet všetkých,
+  // LINK_TEMPLATE netreba nastavovať – slúži len ako záloha.
+  const fromFeed = state.tours.filter(t => t.url).length;
   return {
     tours: state.tours.length,
     version: state.version,
     fetchedAt: state.fetchedAt ? new Date(state.fetchedAt).toISOString() : null,
     lastOkAt: state.lastOkAt ? new Date(state.lastOkAt).toISOString() : null,
     lastError: state.lastError,
+    links: {
+      fromFeed,
+      fromTemplate: state.tours.length - fromFeed,
+      example: state.tours.length ? tourLink(state.tours[0]) : null,
+    },
   };
 }

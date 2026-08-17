@@ -11,6 +11,50 @@ const tags = (el, name) => Array.from(el.getElementsByTagName(name) || []);
 const tag1 = (el, name) => tags(el, name)[0] || null;
 const txt  = (el) => (el && el.textContent != null ? String(el.textContent) : '');
 
+/** Meno elementu bez prípadného namespace prefixu, malými písmenami. */
+const localName = (node) =>
+  String(node && node.nodeName || '').replace(/^.*:/, '').toLowerCase();
+
+/** Priami potomkovia daného mena (nie vnorení hlbšie). */
+const children = (el, names) =>
+  Array.from(el.childNodes || []).filter(n => n.nodeType === 1 && names.includes(localName(n)));
+
+/**
+ * Očistí adresu z feedu. Relatívnu cestu necháva tak – doménu k nej
+ * doplní až ten, kto odkaz použije (server pozná SITE_URL, prehliadač nie).
+ */
+function cleanUrl(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith('//')) return `https:${s}`;
+  if (s.startsWith('/')) return s;
+  return '';   // čokoľvek iné nie je použiteľný odkaz
+}
+
+/**
+ * Odkaz na detail zájazdu.
+ *
+ * Vo feede cesys je ako priamy potomok <url> (hneď za blokom
+ * PRICELIST_INFO). Priamych potomkov berieme prednostne, aby nás
+ * nepomýlila <url> vnorená hlbšie – napríklad v cenníku alebo galérii.
+ * Meno tagu porovnávame bez ohľadu na veľkosť písmen, lebo export
+ * mieša <url> a <URL>.
+ */
+function tourUrl(item) {
+  const fromChild = children(item, ['url', 'link'])
+    .map(n => cleanUrl(txt(n)))
+    .find(Boolean);
+  if (fromChild) return fromChild;
+
+  const fromAttr = cleanUrl(item.getAttribute('url') || item.getAttribute('link'));
+  if (fromAttr) return fromAttr;
+
+  return [...tags(item, 'url'), ...tags(item, 'URL'), ...tags(item, 'link')]
+    .map(n => cleanUrl(txt(n)))
+    .find(Boolean) || '';
+}
+
 /**
  * @param {Document} doc XML dokument
  * @returns {Array<object>} zoznam zájazdov
@@ -74,10 +118,8 @@ export function parseFeedDocument(doc) {
     const catEl = tag1(item, 'category');
     const category = catEl ? txt(catEl).trim() : '';
 
-    // Odkaz na detail zájazdu – ak ho feed obsahuje (inak si ho server doplní zo šablóny)
-    const urlEl = tag1(item, 'url') || tag1(item, 'link');
-    const url = item.getAttribute('url') || item.getAttribute('link')
-             || (urlEl ? txt(urlEl).trim() : '') || '';
+    // Odkaz na detail zájazdu – ak ho feed obsahuje (inak sa poskladá zo šablóny)
+    const url = tourUrl(item);
 
     return {
       id: code, name, dest, category, url,

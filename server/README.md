@@ -221,8 +221,8 @@ Všetko cez env premenné, žiadne tajomstvá v kóde:
 | `FEED_URL` | export cesys | zdrojový XML feed |
 | `LOGO_URL` | logo z webu | logo do bannerov |
 | `PUBLIC_URL` | z hlavičiek | verejná adresa – vkladá sa do feedov |
-| `LINK_TEMPLATE` | – | šablóna odkazu na detail, napr. `https://www.ckdaka.sk/zajazd/{slug}-{code}` |
-| `SITE_URL` | `https://www.ckdaka.sk` | záložný odkaz |
+| `LINK_TEMPLATE` | – | záloha, keď zájazd nemá vo feede `<url>`: napr. `https://www.ckdaka.sk/zajazd/{slug}-{code}` |
+| `SITE_URL` | `https://www.ckdaka.sk` | doména pre odkazy z feedu bez domény; zároveň úplná záloha |
 | `FEED_TTL_MS` | 30 min | ako často sa sťahuje feed |
 | `DEFAULT_STYLE`, `DEFAULT_EXT` | `dark`, `jpg` | predvolený štýl a formát |
 | `JPEG_QUALITY`, `WEBP_QUALITY` | 88, 90 | kvalita kompresie |
