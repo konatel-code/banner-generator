@@ -41,9 +41,13 @@ Detaily, endpointy a nasadenie: [`server/README.md`](server/README.md).
 
 ## Nasadenie
 
-Krok za krokom, väčšina klikania sa dá odovzdať Claude in Chrome:
-[`docs/NASADENIE.md`](docs/NASADENIE.md). V koreni sú pripravené `railway.json`
-aj `fly.toml`, takže build netreba nastavovať ručne.
+| Kam | Návod |
+|---|---|
+| **Vlastný server s Pleskom** | [`docs/PLESK.md`](docs/PLESK.md) – beží tam všetko vrátane prihlásenia, Netlify netreba |
+| Railway / Fly.io | [`docs/NASADENIE.md`](docs/NASADENIE.md), v koreni sú `railway.json` aj `fly.toml` |
+| Napojenie reklamných platforiem | [`docs/NASADENIE.md`](docs/NASADENIE.md), fáza 2 a 3 |
+
+Pri každom kroku je pripravený text, ktorý stačí vložiť do Claude in Chrome.
 
 ## Testy
 

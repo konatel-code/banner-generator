@@ -1104,6 +1104,24 @@ function toggleModalSize(w, h) {
 // ── Prihlásenie – heslo overuje server, v zdrojovom kóde nie je žiadne heslo ──
 const _PW_KEY = 'ckdaka_bg_token';
 
+// Kde overovanie beží, závisí od hostingu: vlastný server (Plesk, Docker) má
+// endpointy na /api, Netlify ich má ako serverless funkcie. Skúsime vlastnú
+// službu a keď na tejto adrese nie je, prepneme sa na Netlify.
+let _authBase = null;
+async function authFetch(path, init) {
+  const bases = _authBase ? [_authBase] : ['/api', '/.netlify/functions'];
+  let lastErr;
+  for (const base of bases) {
+    try {
+      const res = await fetch(base + path, init);
+      if (res.status === 404) { lastErr = new Error('endpoint neexistuje'); continue; }
+      _authBase = base;
+      return res;
+    } catch (err) { lastErr = err; }
+  }
+  throw lastErr || new Error('overovanie nie je dostupné');
+}
+
 async function doLogin() {
   const val = document.getElementById('login-pw').value.trim();
   if (!val) return;
@@ -1111,7 +1129,7 @@ async function doLogin() {
   if (btn) btn.disabled = true;
   document.getElementById('login-err').textContent = '';
   try {
-    const res = await fetch('/.netlify/functions/check-auth', {
+    const res = await authFetch('/check-auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: val }),
@@ -1136,7 +1154,7 @@ async function checkAuth() {
   const token = localStorage.getItem(_PW_KEY);
   if (token) {
     try {
-      const res = await fetch(`/.netlify/functions/verify-auth?token=${encodeURIComponent(token)}`);
+      const res = await authFetch(`/verify-auth?token=${encodeURIComponent(token)}`);
       const data = await res.json();
       if (data.ok) { init(); return; }
     } catch {}

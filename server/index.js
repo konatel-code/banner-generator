@@ -21,6 +21,7 @@ import { config } from './config.js';
 import { getFeed, getTour, feedStatus } from './feed-store.js';
 import { renderBanner, supportedExtensions, pruneBannerCache } from './render.js';
 import { registerFonts, fontStatus } from './fonts.js';
+import { checkPassword, verifyToken, authEnabled } from './auth.js';
 import { buildItems } from './feeds/items.js';
 import { SERIALIZERS } from './feeds/formats.js';
 import { sizeFromKey, allSizes } from '../shared/formats.js';
@@ -172,16 +173,63 @@ async function handleProxy(req, res, url) {
   }
 }
 
-// ── statické súbory z koreňa repozitára ────────────────────────────────────
-async function handleStatic(req, res, url) {
-  const rel = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
-  const file = path.resolve(ROOT, rel);
-  if (!file.startsWith(ROOT + path.sep) && file !== path.join(ROOT, 'index.html'))
-    return send(res, 403, 'Forbidden');
+// ── prihlásenie do appky ───────────────────────────────────────────────────
+/**
+ * Načíta telo požiadavky. Pri prekročení limitu vráti null – dočítame ticho
+ * do konca a odpovieme normálne; zhodené spojenie vyzerá pre klienta ako
+ * výpadok siete a zbytočne to mätie.
+ */
+function readBody(req, limit = 8 * 1024) {
+  return new Promise((resolve) => {
+    let data = '', tooBig = false;
+    req.on('data', chunk => {
+      if (tooBig) return;
+      data += chunk;
+      if (data.length > limit) { tooBig = true; data = ''; }
+    });
+    req.on('end', () => resolve(tooBig ? null : data));
+    req.on('error', () => resolve(null));
+  });
+}
 
+async function handleCheckAuth(req, res) {
+  if (req.method !== 'POST') return send(res, 405, 'Method Not Allowed');
+
+  const raw = await readBody(req);
+  if (raw === null) return sendJson(res, 413, { ok: false, err: 'too_large' });
+
+  let body = {};
+  try { body = JSON.parse(raw || '{}'); } catch { return sendJson(res, 400, { ok: false }); }
+
+  const result = checkPassword(body.password);
+  if (result.error === 'not_configured') {
+    return sendJson(res, 500, { ok: false, err: 'not_configured' });
+  }
+  return sendJson(res, result.ok ? 200 : 401, result.ok ? { ok: true, token: result.token } : { ok: false });
+}
+
+function handleVerifyAuth(req, res, url) {
+  return sendJson(res, 200, { ok: verifyToken(url.searchParams.get('token') || '') });
+}
+
+// ── statické súbory ────────────────────────────────────────────────────────
+// Zámerne len konkrétny zoznam ciest: služba beží na verejnej adrese a nesmie
+// vydať nič iné než appku a jej moduly – ani zdrojáky, ani cache, ani
+// node_modules. Preto sa nepoužíva žiadne odvodzovanie cesty zo vstupu.
+const STATIC_FILES = new Map([
+  ['/', 'index.html'],
+  ['/index.html', 'index.html'],
+  ['/favicon.ico', 'favicon.ico'],
+]);
+const SHARED_MODULE = /^\/shared\/[a-z0-9-]+\.js$/;
+
+async function handleStatic(req, res, url) {
+  let rel = STATIC_FILES.get(url.pathname);
+  if (!rel && SHARED_MODULE.test(url.pathname)) rel = url.pathname.slice(1);
+  if (!rel) return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
+
+  const file = path.join(ROOT, rel);
   try {
-    const st = await fsp.stat(file);
-    if (!st.isFile()) throw new Error('not a file');
     const data = await fsp.readFile(file);
     send(res, 200, data, {
       'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
@@ -218,18 +266,24 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'OPTIONS') {
     return send(res, 204, '', {
-      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, If-None-Match',
     });
   }
-  if (!['GET', 'HEAD'].includes(req.method)) return send(res, 405, 'Method Not Allowed');
 
   try {
+    // Prihlásenie je jediné miesto, kam sa posiela POST
+    if (url.pathname === '/api/check-auth')  return await handleCheckAuth(req, res);
+    if (url.pathname === '/api/verify-auth') return handleVerifyAuth(req, res, url);
+
+    if (!['GET', 'HEAD'].includes(req.method)) return send(res, 405, 'Method Not Allowed');
+
     if (url.pathname === '/health') {
       return sendJson(res, 200, {
         ok: true,
         feed: feedStatus(),
         fonts: fontStatus(),
+        auth: authEnabled() ? 'heslo' : 'vypnuté',
         sizes: allSizes().map(s => s.key),
         styles: STYLES,
         uptimeSec: Math.round(process.uptime()),
@@ -248,12 +302,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-// Spustenie len pri priamom štarte (nie pri importe v testoch)
-const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  server.listen(config.port, config.host, async () => {
-    console.log(`[server] beží na http://${config.host}:${config.port}`);
-    console.log(`[server] prehľad: http://localhost:${config.port}/service`);
+/**
+ * Naštartuje službu. Volá to buď priamy beh (`node index.js`), alebo
+ * štartovací súbor pod Passengerom na Plesku (`app.cjs`).
+ */
+export function startServer({ port = config.port, host = config.host } = {}) {
+  server.listen(port, host, async () => {
+    console.log(`[server] beží na http://${host}:${port}`);
+    console.log(`[server] prehľad: http://localhost:${port}/service`);
     try {
       const feed = await getFeed();
       console.log(`[server] feed pripravený: ${feed.tours.length} zájazdov`);
@@ -266,6 +322,14 @@ if (isMain) {
   setInterval(() => {
     pruneBannerCache().then(n => n && console.log(`[cache] zmazaných ${n} starých bannerov`));
   }, 24 * 3600 * 1000).unref();
+
+  return server;
+}
+
+// Spustenie len pri priamom štarte (nie pri importe v testoch)
+const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  startServer();
 }
 
 export { server };

@@ -32,6 +32,8 @@ npm test            # 41 testov, bez prístupu na internet
 
 | Endpoint | Popis |
 |---|---|
+| `/` a `/shared/*.js` | appka pre prehliadač (servíruje sa len tento zoznam, nič iné z repozitára) |
+| `/api/check-auth`, `/api/verify-auth` | prihlásenie do appky – funguje bez Netlify funkcií |
 | `/img/{kód}/{š}x{v}.{jpg\|png\|webp}` | banner zájazdu vyrenderovaný na požiadanie |
 | `/feed/google-merchant.xml` | RSS feed pre Merchant Center / Performance Max |
 | `/feed/google-ads-dynamic.csv` | feed firemných údajov pre dynamický remarketing |
@@ -228,6 +230,8 @@ Všetko cez env premenné, žiadne tajomstvá v kóde:
 | `CACHE_DIR` | `server/.cache` | cache fotiek a hotových bannerov |
 | `BANNER_MAX_AGE`, `FEED_MAX_AGE` | 6 h, 30 min | hlavičky `Cache-Control` |
 | `FEED_LIMIT` | 0 (bez limitu) | strop počtu položiek vo feede |
+| `BANNER_PASSWORD` | – | heslo do generátora; bez neho je appka otvorená |
+| `BANNER_SECRET` | – | tajný kľúč na podpis prihlasovacieho tokenu (aspoň 32 znakov) |
 
 Ak feed dočasne vypadne, služba beží ďalej na poslednej úspešne načítanej verzii.
 
@@ -246,8 +250,12 @@ docker run -v ckdaka-cache:/app/.cache ckdaka-banner node sync.js --watch --inte
 ```
 
 Netlify na to nestačí – funkcie majú krátky časový limit a render bannerov je
-CPU práca. Potrebný je bežiaci Node proces (Fly.io, Railway, VPS). Statická
-appka `index.html` môže ostať na Netlify tak, ako je.
+CPU práca. Potrebný je bežiaci Node proces.
+
+Na **Plesk** je pripravený štartovací súbor `app.cjs` (Passenger ho načíta cez
+`require()`) a prázdny `public/` ako Document Root – postup je
+v [`../docs/PLESK.md`](../docs/PLESK.md). Tam beží aj appka pre prehliadač
+vrátane prihlásenia, takže Netlify netreba vôbec.
 
 Cache je zámerne na disku: `docker run` bez `-v` funguje tiež, len sa po reštarte
 znova vyrenderuje.

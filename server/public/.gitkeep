@@ -1,0 +1,6 @@
+Zámerne prázdny priečinok.
+
+Slúži ako "Document Root" pre Plesk. Keď je prázdny, web server neservíruje
+priamo žiadny súbor a všetky požiadavky idú do Node aplikácie, ktorá vydá
+len appku a jej moduly. Zdrojáky, node_modules ani cache sa tak nedajú
+stiahnuť cez prehliadač.
