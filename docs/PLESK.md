@@ -23,19 +23,43 @@ Node.js → Install.
 
 ---
 
-## 1. Doména alebo subdoména
+## 1. Subdoména a DNS
 
-Odporúčam samostatnú subdoménu, napr. `banner.ckdaka.sk`.
+Používame `banner.ckdaka.sk`. Ak dnes ukazuje inam (napríklad na Netlify),
+poradie krokov je dôležité: **najprv subdoména v Plesku, potom prepnutie DNS
+a certifikát až nakoniec.** Let's Encrypt si totiž overuje vlastníctvo tak, že
+si adresu sám otvorí – kým DNS ukazuje inam, vydanie certifikátu zlyhá.
 
 > **Prompt pre Claude in Chrome**
 >
 > V Plesku otvor Websites & Domains a pridaj subdoménu `banner.ckdaka.sk`.
-> Document root zatiaľ nechaj predvolený, upravíme ho neskôr. Potom
-> subdoméne vydaj Let's Encrypt certifikát (SSL/TLS Certificates → Install
-> a zapni presmerovanie na HTTPS).
+> Document root zatiaľ nechaj predvolený, upravíme ho neskôr. Certifikát
+> zatiaľ nevydávaj. Nakoniec mi napíš IP adresu, ktorú Plesk subdoméne
+> pridelil – nájdeš ju v prehľade domény.
+
+Potom u správcu DNS (tam, kde je doména `ckdaka.sk`) prepni `A` záznam pre
+`banner` na IP adresu servera a zmaž prípadný `CNAME` na Netlify. Že je zmena
+vonku, overíš príkazom:
+
+```bash
+dig +short banner.ckdaka.sk
+```
+
+Kým sa nevráti IP tvojho servera, ďalej nepokračuj – zvyčajne to trvá pár
+minút, výnimočne hodiny podľa TTL pôvodného záznamu.
+
+> **Prompt pre Claude in Chrome (až keď DNS ukazuje na server)**
+>
+> V Plesku otvor subdoménu `banner.ckdaka.sk` → SSL/TLS Certificates →
+> Install a vydaj Let's Encrypt certifikát. Potom v Hosting Settings zapni
+> presmerovanie na HTTPS.
 
 HTTPS je nutnosť – reklamné platformy si obrázky z nezabezpečenej adresy
 nestiahnu.
+
+Appka na Netlify môže zatiaľ pokojne bežať; prestane byť dostupná na tejto
+adrese v momente, keď sa DNS prepne. Netlify projekt nemaž, kým si neoveríš,
+že nová inštalácia funguje.
 
 ---
 
