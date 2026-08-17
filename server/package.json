@@ -1,0 +1,21 @@
+{
+  "name": "ckdaka-banner-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Server-side render bannerov CK DAKA + produktové feedy pre reklamné platformy",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@expo-google-fonts/ubuntu": "^0.4.1",
+    "@napi-rs/canvas": "^0.1.0",
+    "@xmldom/xmldom": "^0.9.0"
+  }
+}

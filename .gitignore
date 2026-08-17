@@ -1,0 +1,5 @@
+node_modules/
+server/.cache/
+server/out/
+*.log
+.DS_Store
